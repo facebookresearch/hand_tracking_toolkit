@@ -152,8 +152,8 @@ import warnings
 from typing import Optional, Tuple, Type
 
 import numpy as np
-from nimble.pylib.functional import affine
-from nimble.pylib.math import transform3d
+from hand_tracking_toolkit import affine
+from hand_tracking_toolkit import transform3d
 
 from . import camera_distortion as dis
 
