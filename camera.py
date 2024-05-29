@@ -17,24 +17,6 @@ This generally consists of three steps:
 3. Scale the distorted coordinates by the focal length and offset to the
    focal center, to get window coordinates `w`.
 
-Going from 2D window coordinates reverses these steps, producing a
-direction vector:
-
-1. Scale the window coordinates 'w' by the inverse focal length and
-   offset from the focal center, to get distorted coordinates `q`.
-
-2. Undistort the 2D coordinates using fitted coefficients of some
-   general function (e.g. a polynomial), producing undistorted
-   coordinates `p`.
-
-   Rather than exactly inverting the distortion polynomial, we can just
-   fit new parameters for the same the polynomial in the inverse
-   direction, and store both sets of parameters with the model.
-
-3. Unproject the 2D coordinates `p` to a unit 3D direction `v` via some
-   fixed unprojection function.
-
-
 ## Coordinate convention
 
 Right-handed coords following the OpenCV convention:
@@ -148,14 +130,11 @@ Nimble file format example::
 import abc
 import json
 import math
-import warnings
 from typing import Optional, Tuple, Type
 
 import numpy as np
-from nimble.pylib.functional import affine
-from nimble.pylib.math import transform3d
 
-from . import camera_distortion as dis
+from . import affine, camera_distortion as dis
 
 
 # ---------------------------------------------------------------------
@@ -176,6 +155,52 @@ from . import camera_distortion as dis
 # A trailing underscore (e.g. `p_`, `q_`) should be read as "hat", and
 # generally indicates an approximation to another value.
 # ---------------------------------------------------------------------
+
+
+def transform_points(matrix: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """
+    Transform an array of 3D points with an SE3 transform (rotation and translation).
+
+    *WARNING* this function does not support arbitrary affine transforms that also scale
+    the coordinates (i.e., if a 4x4 matrix is provided as input, the last row of the
+    matrix must be `[0, 0, 0, 1]`).
+
+    Matrix or points can be batched as long as the batch shapes are broadcastable.
+
+    Args:
+        matrix: SE3 transform(s)  [..., 3, 4] or [..., 4, 4]
+        points: Array of 3d points [..., 3]
+
+    Returns:
+        Transformed points [..., 3]
+    """
+    return rotate_points(matrix, points) + matrix[..., :3, 3]
+
+
+def rotate_points(matrix: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """
+    Rotates an array of 3D points with an affine transform,
+    which is equivalent to transforming an array of 3D rays.
+
+    *WARNING* This ignores the translation in `m`; to transform 3D *points*, use
+    `transform_points()` instead.
+
+    Note that we specifically optimize for ndim=2, which is a frequent
+    use case, for better performance. See n388920 for the comparison.
+
+    Matrix or points can be batched as long as the batch shapes are broadcastable.
+
+    Args:
+        matrix: SE3 transform(s)  [..., 3, 4] or [..., 4, 4]
+        points: Array of 3d points or 3d direction vectors [..., 3]
+
+    Returns:
+        Rotated points / direction vectors [..., 3]
+    """
+    if matrix.ndim == 2:
+        return (points.reshape(-1, 3) @ matrix[:3, :3].T).reshape(points.shape)
+    else:
+        return (matrix[..., :3, :3] @ points[..., None]).squeeze(-1)
 
 
 class CameraModel(dis.CameraProjection, abc.ABC):
@@ -199,15 +224,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         would normally use.) If it's a simple tuple or array, it will
         used as coefficients for `self.distortion_model`.
 
-    undistort_coeffs=None
-        Inverse distortion coefficients (window -> eye)
-
-        Like `distort_coeffs`, except fitted to go in the opposite
-        direction.
-
-        If not given, it will be approximately fitted using some
-        generated sample points.
-
     T_world_from_eye : np.ndarray
         Camera's position and orientation in world space, represented as
         a 3x4 or 4x4 matrix.
@@ -223,15 +239,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
     Attributes
     ----------
     Most attributes are the same as constructor parameters.
-
-    undistortion_coeffs : tuple of float
-        Fitted parameters for inverse distortion function. Used in the
-        same polynomial as distortion_coeffs, but fitted to go in the
-        opposite direction.
-
-        Undistortion is not an exact inverse of distortion in general,
-        since a polynomial can only represent an approximate self-
-        inverse.
 
     zmin
         Smallest z coordinate of a visible unit-length eye vector.
@@ -273,7 +280,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
     distortion_model: Type[dis.DistortionModel]
     distort: dis.DistortionModel
-    undistort: dis.DistortionModel
 
     _zmin: Optional[float]
     _max_angle: Optional[float]
@@ -285,10 +291,8 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         f,
         c,
         distort_coeffs,
-        undistort_coeffs=None,
         T_world_from_eye=None,
         serial="",
-        bypass_fit_undistort_coeffs=False,
     ):  # pylint: disable=super-init-not-called (see issue 4790 on pylint github)
         self.width = width
         self.height = height
@@ -325,22 +329,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         else:
             self.distort = self.distortion_model(*distort_coeffs)
 
-        if isinstance(undistort_coeffs, dis.DistortionModel):
-            self.undistort = undistort_coeffs
-        elif bypass_fit_undistort_coeffs:
-            self.undistort = None
-        else:
-            if self.distortion_model == dis.NoDistortion:
-                # Special case: we can skip fit_undistort_coeffs() which is expensive
-                assert (
-                    undistort_coeffs is None or undistort_coeffs == []
-                ), "Cannot supply undistort_coeffs for NoDistortion"
-                self.undistort = dis.NoDistortion()
-            else:
-                if undistort_coeffs is None:
-                    undistort_coeffs = self._fit_undistort_coeffs()
-                self.undistort = self.distortion_model(*undistort_coeffs)
-
         # These are computed only when needed, use the getters zmin() and max_angle()
         self._zmin = None
         self._max_angle = None
@@ -365,9 +353,8 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         # ModelViewMatrix kept for backward compatibility TODO(pigi): we should be able to remove this
         js["ModelViewMatrix"] = np.linalg.inv(self.T_world_from_eye).tolist()
 
-        if self.__class__ != FisheyeCubicPlusRD4:
-            js["fx"], js["fy"] = np.asarray(self.f).tolist()
-            js["cx"], js["cy"] = np.asarray(self.c).tolist()
+        js["fx"], js["fy"] = np.asarray(self.f).tolist()
+        js["cx"], js["cy"] = np.asarray(self.c).tolist()
 
         dist_model = None
         if self.__class__ == PinholePlaneCameraModel:
@@ -383,17 +370,16 @@ class CameraModel(dis.CameraProjection, abc.ABC):
                 )
         js["DistortionModel"] = dist_model
 
-        if self.__class__ != FisheyeCubicPlusRD4:
-            for name, coeff in zip(self.distortion_model._fields, self.distort):
-                js[name] = coeff
-        else:
-            js["perceptionIntrinsicParameters"] = [*self.f, *self.c, *self.distort[1:]]
+        for name, coeff in zip(self.distortion_model._fields, self.distort):
+            js[name] = coeff
 
         # We don't save inverse distortion parameters in camera json
         return js
 
     def copy(
-        self, T_world_from_eye=None, serial=None, bypass_fit_undistort_coeffs=False
+        self,
+        T_world_from_eye=None,
+        serial=None,
     ):
         """Return a copy of this camera
 
@@ -414,7 +400,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             self.height,
             T_world_from_eye=T_world_from_eye,
             serial=serial,
-            bypass_fit_undistort_coeffs=bypass_fit_undistort_coeffs,
         )
 
     def compute_zmin(self):
@@ -459,13 +444,9 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
         Returns a tuple of (origin, direction)
         """
-        v = transform3d.rotate_points(self.T_world_from_eye, self.window_to_eye(w))
+        v = rotate_points(self.T_world_from_eye, self.window_to_eye(w))
         o = np.broadcast_to(self.pos(), v.shape)
         return (o, v)
-
-    def window_to_world3(self, w):
-        """Unproject 3D window coordinates (uv + depth) to world points"""
-        return self.eye_to_world(self.window_to_eye3(w))
 
     def world_visible(self, v):
         """
@@ -477,15 +458,13 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         """
         Apply camera inverse extrinsics to points `v` to get eye coords
         """
-        return transform3d.rotate_points(
-            self.T_world_from_eye.T, v - self.T_world_from_eye[:3, 3]
-        )
+        return rotate_points(self.T_world_from_eye.T, v - self.T_world_from_eye[:3, 3])
 
     def eye_to_world(self, v):
         """
         Apply camera extrinsics to eye points `v` to get world coords
         """
-        return transform3d.transform_points(self.T_world_from_eye, v)
+        return transform_points(self.T_world_from_eye, v)
 
     def eye_to_window(self, v):
         """Project eye coordinates to 2d window coordinates"""
@@ -495,13 +474,8 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
     def window_to_eye(self, w):
         """Unproject 2d window coordinates to unit-length 3D eye coordinates"""
-        assert self.undistort is not None
-        q = (np.asarray(w) - self.c) / self.f
-        if not isinstance(self.undistort, dis.NoDistortion):
-            warnings.warn(
-                "TODO: solved undistortion parameters cause large errors near the image border"
-            )
-        p = self.undistort.evaluate(q)
+        assert isinstance(self.distort, dis.NoDistortion)
+        p = (np.asarray(w) - self.c) / self.f
         return self.unproject(p)
 
     def eye_to_window3(self, v):
@@ -510,15 +484,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         q = self.distort.evaluate(p[..., :2])
         p[..., :2] = q * self.f + self.c
         return p
-
-    def window_to_eye3(self, w):
-        """Unproject 3d window coordinates (uv + depth) to eye coordinates"""
-        assert self.undistort is not None
-        temp = np.array(w, dtype=np.float64)
-        temp[..., :2] -= self.c
-        temp[..., :2] /= self.f
-        temp[..., :2] = self.undistort.evaluate(temp[..., :2])
-        return self.unproject3(temp)
 
     def visible(self, v):
         """
@@ -556,7 +521,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         scale=1,
         T_world_from_eye=None,
         serial=None,
-        bypass_fit_undistort_coeffs=False,
     ):
         """
         Return intrinsics for a crop of the sensor image.
@@ -578,13 +542,11 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             np.asarray(self.f) * scale,
             (np.array(self.c) - (src_x, src_y) + 0.5) * scale - 0.5,
             self.distort,
-            self.undistort,
             self.T_world_from_eye if T_world_from_eye is None else T_world_from_eye,
             self.serial if serial is None else serial,
-            bypass_fit_undistort_coeffs,
         )
 
-    def subrect(self, transform, width, height, bypass_fit_undistort_coeffs=False):
+    def subrect(self, transform, width, height):
         """
         Return intrinsics for a scaled crop of the sensor image.
 
@@ -623,29 +585,10 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             self.f * f,
             self.c * f + c,
             self.distort_coeffs,
-            self.undistort_coeffs,
             self.T_world_from_eye,
             self.serial,
-            bypass_fit_undistort_coeffs,
         )
         return cam
-
-    def to_model(self, cls):
-        """Convert to a different distortion model.
-
-        Since this relies on the fitted coefficients of the first model,
-        it cannot be as accurate as directly fitting the desired model from
-        measurements, but it's better than nothing.
-        """
-        w, h = self.width, self.height
-        rays, _ = _gen_rays_in_window(self, spacing=0.05)
-        # forward project again, because the unproject coefficients may
-        # have been fitted from the forward projection and so have extra
-        # error.
-        w_pts = self.eye_to_window(rays)
-        return cls.fit_from_points(
-            rays, w_pts, w, h, self.T_world_from_eye, self.serial
-        )
 
     @classmethod
     def fit_from_points(
@@ -678,12 +621,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             width, height, f, (cx, cy), coeffs, uncoeffs, T_world_from_eye, serial
         )
 
-    def _fit_undistort_coeffs(self):
-        eye_pts, weights = _gen_rays_in_window(self, spacing=0.05)
-        p = self.project(eye_pts)
-        q = self.distort.evaluate(p)
-        return dis.fit_coeffs(self.distortion_model, q, p, w=weights)
-
 
 def from_nimble_json(js):
     if isinstance(js, str):
@@ -700,29 +637,11 @@ def from_nimble_json(js):
         else np.linalg.inv(np.array(js["ModelViewMatrix"]))
     )  # fallback to ModelViewMatrix = T_CameraFromWorld
 
-    params = (
-        js["perceptionIntrinsicParameters"] if model == "FisheyeCubicPlusRD4" else []
-    )
-    (fx, fy, cx, cy) = (
-        (js["fx"], js["fy"], js["cx"], js["cy"])
-        if model != "FisheyeCubicPlusRD4"
-        else params[0:4]
-    )
+    (fx, fy, cx, cy) = (js["fx"], js["fy"], js["cx"], js["cy"])
 
     cls = model_by_name[model]
     distort_params = cls.distortion_model._fields
-    coeffs = (
-        [js[name] for name in distort_params]
-        if model != "FisheyeCubicPlusRD4"
-        else [params[0], *params[4:]]
-    )
-
-    js_inverse = js.get("inverse", None)
-    bypass_fit_undistort_coeffs = js.get("bypass_fit_undistort_coeffs", False)
-    if js_inverse is not None:
-        uncoeffs = [js_inverse[name] for name in distort_params]
-    else:
-        uncoeffs = None
+    coeffs = [js[name] for name in distort_params]
 
     return cls(
         width,
@@ -730,45 +649,8 @@ def from_nimble_json(js):
         (fx, fy),
         (cx, cy),
         coeffs,
-        uncoeffs,
         T_World_Camera,
-        bypass_fit_undistort_coeffs=bypass_fit_undistort_coeffs,
     )
-
-
-# Return an array of 3d unit direction vectors, spaced approximately
-# 'spacing' radians apart, that all project to within a camera's
-# window
-def _gen_rays_in_window(cam, *, spacing, margin=0, fov=None):
-    rays = []
-    weights = []
-    if fov is None:
-        fov = cam.model_fov_limit
-    for strip in _iter_rings_on_sphere(spacing, fov=fov):
-        w = cam.eye_to_window(strip)
-        valid = cam.w_visible(w, margin=margin)
-        if rays and not any(valid):
-            break
-        vs = strip[valid]
-        rays.append(vs)
-        weights.append(np.ones(len(vs)) * len(strip) / len(vs))
-    return np.concatenate(rays, axis=0), np.concatenate(weights, axis=0)
-
-
-def _iter_rings_on_sphere(spacing, fov=np.pi):
-    # offset phi for each ring to even out spacing
-    phi_offset = 0.0
-    aspacing = np.pi * (5**0.5 - 1)
-    for i in range(int(fov // spacing) + 1, -1, -1):
-        theta = fov - i * spacing
-        z = np.cos(theta)
-        r = np.sin(theta)
-        n = np.maximum(1, np.round(r * 2 * np.pi / spacing).astype(int))
-        phi_offset = (phi_offset + aspacing) % (2 * np.pi)
-        phi = np.linspace(0, 2 * np.pi, n, endpoint=False) - phi_offset
-        x = r * np.cos(phi)
-        y = r * np.sin(phi)
-        yield np.stack([x, y, np.repeat(z, n)], axis=-1)
 
 
 # Camera models
@@ -796,11 +678,6 @@ class OpenCVFullCameraModel(dis.PerspectiveProjection, CameraModel):
     model_fov_limit = 50 * (math.pi / 180)
 
 
-class FisheyeCubicPlusRD4(dis.PerspectiveProjection, CameraModel):
-    distortion_model = dis.FisheyeCubicPlusRD4
-    model_fov_limit = 50 * (math.pi / 180)
-
-
 class OVR44CameraModel(dis.ArctanProjection, CameraModel):
     distortion_model = dis.OVR44Distortion
     model_fov_limit = math.pi / 2
@@ -811,24 +688,12 @@ class OVR62CameraModel(dis.ArctanProjection, CameraModel):
     model_fov_limit = math.pi / 2
 
 
-class Stereographic44CameraModel(dis.StereographicProjection, CameraModel):
-    distortion_model = dis.OVR44Distortion
-    model_fov_limit = 135 * (math.pi / 180)
-
-
-class Stereographic62CameraModel(dis.StereographicProjection, CameraModel):
-    distortion_model = dis.OVR62Distortion
-    model_fov_limit = 190 * (math.pi / 180)
-
-
 model_by_name = {
     "PinholePlane": PinholePlaneCameraModel,
     "OpenCV": OpenCVCameraModel,
     "OculusVisionFishEye": OVR44CameraModel,
     "OculusVisionFishEye62": OVR62CameraModel,
     "Rational": OpenCVFullCameraModel,
-    "Stereographic62": Stereographic62CameraModel,
-    "FisheyeCubicPlusRD4": FisheyeCubicPlusRD4,
 }
 
 all_models = set(model_by_name.values())

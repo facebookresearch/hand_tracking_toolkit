@@ -57,7 +57,6 @@ class TestVisualization(unittest.TestCase):
             f=(80, 80),
             c=(47.5, 47.5),
             distort_coeffs=[],
-            undistort_coeffs=[],
             T_world_from_eye=np.array(
                 [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, -3], [0, 0, 0, 1]]
             ),
