@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from .dataset import HandCropData, HandSide
+from .rasterizer import rasterize_mesh
 
 CONTRASTIVE_COLORS = [
     [0, 35, 255],
@@ -94,20 +95,49 @@ def draw_keypoints(
 
 
 def visualize_hand_crop_data(
-    data: HandCropData, mano_layer: torch.nn.Module
+    data: HandCropData,
+    mano_layer: torch.nn.Module,
+    visualize_mesh: bool,
+    visualize_keypoints: bool,
+    alpha: float = 0.6,
 ) -> np.ndarray:
     side = data.hand_pose.hand_side
-    _, keypoints = mano_layer.forward_kinematics(
+    verts, keypoints = mano_layer.forward_kinematics(
         torch.tensor(data.mano_beta),
         torch.tensor(data.hand_pose.pose),
         torch.tensor(data.hand_pose.global_xform),
         is_right_hand=torch.tensor([side == HandSide.RIGHT]),
     )
-    keypoints_win = data.camera.world_to_window(keypoints.numpy())
 
-    keypoints_vis = draw_keypoints(
-        data.image,
-        keypoints_win,
-        CONTRASTIVE_COLORS,
-    )
-    return keypoints_vis
+    image = data.image
+    if visualize_mesh:
+        if side == HandSide.LEFT:
+            faces = mano_layer.mano_layer_left.faces
+        else:
+            faces = mano_layer.mano_layer_right.faces
+
+        rendering, mask = rasterize_mesh(
+            verts.numpy(),
+            faces,
+            data.camera,
+            diffuse=(0, 0, 1.0) if side == HandSide.LEFT else (1.0, 0, 0),
+            shininess=10,
+        )
+
+        # blending
+        alpha = alpha * mask.astype(np.float32)
+        image = (
+            # pyre-ignore
+            image.astype(np.float32) * (1 - alpha[..., None])
+            + rendering.astype(np.float32) * alpha[..., None]
+        ).astype(np.uint8)
+
+    if visualize_keypoints:
+        keypoints_win = data.camera.world_to_window(keypoints.numpy())
+        image = draw_keypoints(
+            image,
+            keypoints_win,
+            CONTRASTIVE_COLORS,
+        )
+
+    return image
