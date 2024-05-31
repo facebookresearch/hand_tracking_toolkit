@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import webdataset as wds  # @manual
 
-from .camera import CameraModel, from_nimble_json, PinholePlaneCameraModel
+from .camera import CameraModel, from_json, PinholePlaneCameraModel
 
 TARGET_CROP_SIZE = 128
 
@@ -66,7 +66,7 @@ def cam_params_decoder(
     cam_params_dict = json.loads(value)
     cameras: Dict[str, CameraModel] = {}
     for n, cam in enumerate(cam_params_dict["raw_cam_params"]):
-        cameras[f"image_{n:04d}"] = from_nimble_json(cam)
+        cameras[f"image_{n:04d}"] = from_json(cam)
 
     crop_cameras: Dict[HandSide, Dict[str, CameraModel]] = defaultdict(dict)
     crop_params = cam_params_dict["crop_params"]

@@ -93,49 +93,16 @@ But in practice we often need to retain this information, so we also
 need a notion of 3D window coordinates. For narrow field of view, the
 third component can simply be the raw Z coordinate, unchanged; for
 wider field of view it should be the distance to the point instead.
-
-
-## File formats
-
-Nimble file format example::
-
-    {
-        'DistortionModel': 'OculusVisionFishEye',
-        'ImageSizeX': 640,
-        'ImageSizeY': 480,
-        'ModelViewMatrix': [
-            [-0.7446, 0.4606, -0.4830, -14.3485],
-            [0.1369, 0.8137, 0.5648, 23.6725],
-            [0.6532, 0.3543, -0.6690, -130.5179],
-            [0.0, 0.0, 0.0, 1.0]
-        ],
-        'SerialNo': '0072510f171e0702010000031b0a00010:mono',
-        'cx': 311.2256,
-        'cy': 234.9109,
-        'fx': 189.5322,
-        'fy': 189.5141,
-        'k1': 0.3050,
-        'k2': -0.05414,
-        'k3': -0.04977,
-        'k4': 0.01936,
-        'k5': 0.0,
-        'k6': 0.0,
-        'p1': -0.0001268,
-        'p2': -0.0001938,
-        'p3': 0.7929,
-        'p4': -0.2831
-    }
 """
 
 import abc
-import json
 import math
 
-import warnings
-from typing import Optional, Tuple, Type
+from typing import Tuple, Type
 
 import numpy as np
 from hand_tracking_toolkit import affine
+from scipy.spatial.transform import Rotation
 
 from . import camera_distortion as dis
 
@@ -243,20 +210,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
     ----------
     Most attributes are the same as constructor parameters.
 
-    zmin
-        Smallest z coordinate of a visible unit-length eye vector.
-        (Unit-length) eye rays with z < zmin are known not to be visible
-        without doing any extra work.
-
-        This check is needed because for points far outside the window,
-        as the distortion polynomial explodes and incorrectly maps some
-        distant points back to coordinates inside the window.
-
-        `zmin = cos(max_angle)`
-
-    max_angle
-        Maximum angle from +Z axis of a visible eye vector.
-
     distortion_model
         Class attribute giving the distortion model for new instances.
 
@@ -283,9 +236,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
     distortion_model: Type[dis.DistortionModel]
     distort: dis.DistortionModel
-
-    _zmin: Optional[float]
-    _max_angle: Optional[float]
 
     def __init__(
         self,
@@ -332,10 +282,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         else:
             self.distort = self.distortion_model(*distort_coeffs)
 
-        # These are computed only when needed, use the getters zmin() and max_angle()
-        self._zmin = None
-        self._max_angle = None
-
     def __repr__(self):
         return (
             f"{type(self).__name__}({self.width}x{self.height}, f={self.f} c={self.c}"
@@ -346,38 +292,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         Test if the camera model is fisheye, i.e., uses ArctanProjection.
         """
         return isinstance(self, dis.ArctanProjection)
-
-    def to_nimble_json(self):
-        js = {}
-        js["ImageSizeX"] = self.width
-        js["ImageSizeY"] = self.height
-        js["T_WorldFromCamera"] = self.T_world_from_eye.tolist()
-
-        # ModelViewMatrix kept for backward compatibility TODO(pigi): we should be able to remove this
-        js["ModelViewMatrix"] = np.linalg.inv(self.T_world_from_eye).tolist()
-
-        js["fx"], js["fy"] = np.asarray(self.f).tolist()
-        js["cx"], js["cy"] = np.asarray(self.c).tolist()
-
-        dist_model = None
-        if self.__class__ == PinholePlaneCameraModel:
-            dist_model = "PinholePlane"
-        else:
-            for k, v in model_by_name.items():
-                if v == self.__class__:
-                    dist_model = k
-                    break
-            if dist_model is None:
-                raise RuntimeError(
-                    f"Camera model {self.__class__.__name__} is not supported"
-                )
-        js["DistortionModel"] = dist_model
-
-        for name, coeff in zip(self.distortion_model._fields, self.distort):
-            js[name] = coeff
-
-        # We don't save inverse distortion parameters in camera json
-        return js
 
     def copy(
         self,
@@ -405,24 +319,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             serial=serial,
         )
 
-    def compute_zmin(self):
-        corners = (
-            np.array(
-                [[0, 0], [self.width, 0], [0, self.height], [self.width, self.height]]
-            )
-            - 0.5
-        )
-        self._zmin = self.window_to_eye(corners)[:, 2].min()
-        self._max_angle = np.arccos(self._zmin)
-
-    def zmin(self):
-        if self._zmin is None:
-            self.compute_zmin()
-        return self._zmin
-
     def max_angle(self):
-        if self._max_angle is None:
-            self.compute_zmin()
         return self._max_angle
 
     def world_to_window(self, v):
@@ -440,22 +337,6 @@ class CameraModel(dis.CameraProjection, abc.ABC):
     def orient(self):
         """Return world orientation of camera as 3x3 matrix"""
         return self.T_world_from_eye[:3, :3]
-
-    def window_to_world_ray(self, w):
-        """
-        Unproject 2D window coordinates to world rays.
-
-        Returns a tuple of (origin, direction)
-        """
-        v = rotate_points(self.T_world_from_eye, self.window_to_eye(w))
-        o = np.broadcast_to(self.pos(), v.shape)
-        return (o, v)
-
-    def world_visible(self, v):
-        """
-        Returns true if the given world-space points are visible in this camera
-        """
-        return self.eye_visible(self.world_to_eye(v))
 
     def world_to_eye(self, v):
         """
@@ -475,38 +356,12 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         q = self.distort.evaluate(p)
         return q * self.f + self.c
 
-    def window_to_eye(self, w):
-        """Unproject 2d window coordinates to unit-length 3D eye coordinates"""
-        assert self.undistort is not None
-        q = (np.asarray(w) - self.c) / self.f
-        if not isinstance(self.undistort, dis.NoDistortion):
-            warnings.warn(
-                "TODO: solved undistortion parameters cause large errors near the image border",
-                stacklevel=2,
-            )
-        p = self.undistort.evaluate(q)
-        return self.unproject(p)
-
     def eye_to_window3(self, v):
         """Project eye coordinates to 3d window coordinates (uv + depth)"""
         p = self.project3(v)
         q = self.distort.evaluate(p[..., :2])
         p[..., :2] = q * self.f + self.c
         return p
-
-    def visible(self, v):
-        """
-        Returns true if the given world-space points are visible in this camera
-        """
-        return self.eye_visible(self.world_to_eye(v))
-
-    def eye_visible(self, v):
-        """
-        Returns true if the given eye points are visible in this camera
-        """
-        v = affine.normalized(v)
-        w = self.eye_to_window(v)
-        return (v[..., 2] >= self.zmin()) & self.w_visible(w)
 
     def w_visible(self, w, *, margin=0):
         """
@@ -599,58 +454,24 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         )
         return cam
 
-    @classmethod
-    def fit_from_points(
-        cls, eye_pts, w_pts, width, height, T_world_from_eye=None, serial=""
-    ):
-        """Fit intrinsics from points with corresponding eye vectors"""
-        p_pts = cls.project(eye_pts)
 
-        # to make the solve faster and more stable:
-        # first solve for just approximate (f, cx, cy), ignoring distortion
-        fc_x0 = (width**2 + height**2) ** 0.5 / 4, width / 2, height / 2
-        f, cx, cy = dis.fit_coeffs(
-            lambda coeffs, p: p * coeffs[0] + coeffs[1:], p_pts, w_pts, x0=fc_x0
-        )
+def from_json(js):
+    calib = js["calibration"]
 
-        # ...then solve for full distortion coefficients
-        coeffs = dis.fit_coeffs(
-            dis.add_f_c_coeffs(cls.distortion_model.evaluate),
-            p_pts,
-            w_pts,
-            x0=(0,) * len(cls.distortion_model._fields) + (f, cx, cy),
-        )
-        f, cx, cy = coeffs[-3:]
-        coeffs = coeffs[:-3]
+    width = calib["image_width"]
+    height = calib["image_height"]
+    model = calib["projection_model_type"]
 
-        q_pts = (w_pts - [cx, cy]) / f
-        uncoeffs = dis.fit_coeffs(cls.distortion_model, q_pts, p_pts)
+    T_world_from_camera = np.eye(4, dtype=np.float32)
+    T_world_from_camera[:3, :3] = Rotation.from_quat(
+        np.array(js["T_world_from_camera"]["quaternion_wxyz"])
+    ).as_matrix()
+    T_world_from_camera[:3, 3] = np.array(js["T_world_from_camera"]["translation_xyz"])
 
-        return cls(
-            width, height, f, (cx, cy), coeffs, uncoeffs, T_world_from_eye, serial
-        )
-
-
-def from_nimble_json(js):
-    if isinstance(js, str):
-        js = json.loads(js)
-    js = js.get("Camera", js)
-
-    width = js["ImageSizeX"]
-    height = js["ImageSizeY"]
-    model = js["DistortionModel"]
-
-    T_World_Camera = (
-        np.array(js["T_WorldFromCamera"])
-        if "T_WorldFromCamera" in js
-        else np.linalg.inv(np.array(js["ModelViewMatrix"]))
-    )  # fallback to ModelViewMatrix = T_CameraFromWorld
-
-    (fx, fy, cx, cy) = (js["fx"], js["fy"], js["cx"], js["cy"])
+    fx, fy, cx, cy = calib["projection_params"][:4]
+    coeffs = calib["projection_params"][4:]
 
     cls = model_by_name[model]
-    distort_params = cls.distortion_model._fields
-    coeffs = [js[name] for name in distort_params]
 
     return cls(
         width,
@@ -658,7 +479,7 @@ def from_nimble_json(js):
         (fx, fy),
         (cx, cy),
         coeffs,
-        T_World_Camera,
+        T_world_from_camera,
     )
 
 
@@ -675,6 +496,10 @@ class PinholePlaneCameraModel(dis.PerspectiveProjection, CameraModel):
         return np.array(
             [[self.f[0], 0, self.c[0]], [0, self.f[1], self.c[1]], [0, 0, 1]]
         )
+
+    def window_to_eye(self, w):
+        p = (np.asarray(w) - self.c) / self.f
+        return self.unproject(p)
 
 
 class OpenCVCameraModel(dis.PerspectiveProjection, CameraModel):

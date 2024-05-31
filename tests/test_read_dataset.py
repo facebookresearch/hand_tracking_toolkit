@@ -13,9 +13,7 @@ class TestReadDataset(unittest.TestCase):
             "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
             __package__,
         )
-        self.test_sequence_name = (
-            "synthetic_dpe_small_2021_h2_clap_both_9053_ganon_doom_2021-09-09_111837_0"
-        )
+        self.test_sequence_name = "sequence0000"
         self.tar_path = os.path.join(
             self.test_data_dir, f"{self.test_sequence_name}.tar"
         )
