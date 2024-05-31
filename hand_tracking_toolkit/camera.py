@@ -130,11 +130,14 @@ Nimble file format example::
 import abc
 import json
 import math
+
+import warnings
 from typing import Optional, Tuple, Type
 
 import numpy as np
+from hand_tracking_toolkit import affine
 
-from . import affine, camera_distortion as dis
+from . import camera_distortion as dis
 
 
 # ---------------------------------------------------------------------
@@ -474,8 +477,14 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
     def window_to_eye(self, w):
         """Unproject 2d window coordinates to unit-length 3D eye coordinates"""
-        assert isinstance(self.distort, dis.NoDistortion)
-        p = (np.asarray(w) - self.c) / self.f
+        assert self.undistort is not None
+        q = (np.asarray(w) - self.c) / self.f
+        if not isinstance(self.undistort, dis.NoDistortion):
+            warnings.warn(
+                "TODO: solved undistortion parameters cause large errors near the image border",
+                stacklevel=2,
+            )
+        p = self.undistort.evaluate(q)
         return self.unproject(p)
 
     def eye_to_window3(self, v):
