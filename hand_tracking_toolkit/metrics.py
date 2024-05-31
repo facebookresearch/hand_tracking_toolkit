@@ -9,10 +9,7 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 
-try:
-    from data_loaders.mano_layer import MANOHandModel
-except ImportError:
-    from hot3d.data_loaders.mano_layer import MANOHandModel  # @manual  #pyre-ignore
+from .mano_layer import MANOHandModel
 
 MAX_LANDMARK_ERROR_MM = 50
 PCK_THRESHOLDS: torch.Tensor = torch.linspace(0, MAX_LANDMARK_ERROR_MM, 101)
