@@ -14,6 +14,7 @@ from .mano_layer import MANOHandModel
 MAX_LANDMARK_ERROR_MM = 50
 PCK_THRESHOLDS: torch.Tensor = torch.linspace(0, MAX_LANDMARK_ERROR_MM, 101)
 MANO_FINGERTIP_IDX = list(range(16, 21))
+M_TO_MM = 1000  # meter to mm conversion
 
 
 def _safe_div(x, y, eps: float = 1e-6, default_val: float = 0):
@@ -215,6 +216,12 @@ def compute_pose_metrics(
         gt_global_xform,
         is_right_hand=is_right_hand,
     )
+
+    pred_mano_vertices = pred_mano_vertices * M_TO_MM
+    gt_mano_vertices = gt_mano_vertices * M_TO_MM
+    pred_landmarks = pred_landmarks * M_TO_MM
+    gt_landmarks = gt_landmarks * M_TO_MM
+
     # compute mpjpe
     mpjpe = compute_mpjpe(pred_landmarks, gt_landmarks)
     # compute pck auc
@@ -249,6 +256,9 @@ def compute_shape_metrics(
     mano_layer = MANOHandModel(mano_model_dir)
     pred_mano_vertices, _ = mano_layer.shape_only_forward_kinematics(pred_shape_params)
     gt_mano_vertices, _ = mano_layer.shape_only_forward_kinematics(gt_shape_params)
+
+    pred_mano_vertices = pred_mano_vertices * M_TO_MM
+    gt_mano_vertices = gt_mano_vertices * M_TO_MM
 
     assert pred_mano_vertices.shape == gt_mano_vertices.shape
 
