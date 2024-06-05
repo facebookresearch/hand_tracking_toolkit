@@ -522,11 +522,18 @@ class OVR62CameraModel(dis.ArctanProjection, CameraModel):
     model_fov_limit = math.pi / 2
 
 
+class OVR624CameraModel(dis.ArctanProjection, CameraModel):
+    distortion_model = dis.OVR624Distortion
+    model_fov_limit = math.pi / 2
+
+
 model_by_name = {
     "PinholePlane": PinholePlaneCameraModel,
     "OpenCV": OpenCVCameraModel,
     "OculusVisionFishEye": OVR44CameraModel,
     "OculusVisionFishEye62": OVR62CameraModel,
+    "OculusVisionFishEye624": OVR624CameraModel,
+    "CameraModelType.FISHEYE624": OVR624CameraModel,
     "Rational": OpenCVFullCameraModel,
 }
 

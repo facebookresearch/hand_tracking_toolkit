@@ -349,3 +349,52 @@ class OVR62Distortion(NamedTuple):
         x += 2 * p2 * xy + p1 * (r2 + 2 * x2)
         y += 2 * p1 * xy + p2 * (r2 + 2 * y2)
         return np.stack((x, y), axis=-1)
+
+
+class OVR624Distortion(NamedTuple):
+    """
+    OVRFisheye624 model, with 6 radial, 2 tangential coeffs and 4 coeffs to model thin-prism.
+    """
+
+    k1: float
+    k2: float
+    k3: float
+    k4: float
+    k5: float
+    k6: float
+    p1: float
+    p2: float
+    s1: float
+    s2: float
+    s3: float
+    s4: float
+
+    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+        k1, k2, k3, k4, k5, k6, p1, p2, s1, s2, s3, s4 = self  # pylint: disable=unpacking-non-sequence
+        # radial component
+        r2 = (p * p).sum(axis=-1, keepdims=True)
+        r2 = np.clip(r2, -np.pi**2, np.pi**2)
+
+        r4 = r2 * r2
+        r6 = r2 * r4
+        r8 = r4 * r4
+        r10 = r4 * r6
+        r12 = r6 * r6
+        radial = 1 + k1 * r2 + k2 * r4 + k3 * r6 + k4 * r8 + k5 * r10 + k6 * r12
+        uv = p * radial
+
+        # tangential component
+        x, y = uv[..., 0], uv[..., 1]
+        x2 = x * x
+        y2 = y * y
+        xy = x * y
+        r2 = x2 + y2
+        x += 2 * p2 * xy + p1 * (r2 + 2 * x2)
+        y += 2 * p1 * xy + p2 * (r2 + 2 * y2)
+
+        # thin prism
+        r4 = r2 * r2
+        x += s1 * r2 + s2 * r4
+        y += s3 * r2 + s4 * r4
+
+        return np.stack((x, y), axis=-1)
