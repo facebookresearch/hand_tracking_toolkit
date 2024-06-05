@@ -13,7 +13,8 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-if __name__ == "__main__":
+
+def main() -> None:
     parser = argparse.ArgumentParser(
         """
         Extracts ground truth annotations from sequences written in webdataset format.
@@ -66,3 +67,8 @@ if __name__ == "__main__":
     write_shape_estimation_submission_file(
         output_dir / "test_shape_annotations.json", shape_samples
     )
+
+
+if __name__ == "__main__":
+    # Do not add code here, it won't be run. Add them to the function called below.
+    main()  # pragma: no cover
