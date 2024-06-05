@@ -4,40 +4,24 @@
 Code to evaluate a submission file
 """
 
-import argparse
 import json
+import tarfile
 import tempfile
-import zipfile
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-from hand_tracking_toolkit.metrics import compute_pose_metrics, compute_shape_metrics
+
+from .metrics import compute_pose_metrics, compute_shape_metrics
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--test-annotation-file", type=str, required=True, help="Path to GT zip"
-    )
-    parser.add_argument(
-        "--user-annotation-file",
-        type=str,
-        required=True,
-        help="Path to submission file",
-    )
-    parser.add_argument("--phase-codename")
-    args = parser.parse_args()
-    return args
+def extract_tar(tar_file: Path, extract_dir: Path) -> None:
+    assert tar_file.exists() and tar_file.suffix == ".tar"
 
-
-def extract_zip(zip_file: Path, extract_dir: Path) -> None:
-    assert zip_file.exists() and zip_file.suffix == ".zip"
-
-    with zipfile.ZipFile(zip_file) as z:
-        z.extractall(extract_dir)
+    with tarfile.TarFile(tar_file) as tf:
+        tf.extractall(extract_dir)
     return
 
 
@@ -260,37 +244,27 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
         pred_dir = Path(tmp_dir, "pred")
-        extract_zip(Path(test_annotation_file), gt_dir)
-        extract_zip(Path(user_submission_file), pred_dir)
+        extract_tar(Path(test_annotation_file), gt_dir)
+        extract_tar(Path(user_submission_file), pred_dir)
         mano_dir = gt_dir.joinpath("mano")
         if phase_codename == "pose_estimation":
 
-            output_pose = {}
+            output = []
             for dataset_suffix in ["umetrack", "hot3d"]:
                 res = evaluate_pose_dataset(
                     pred_dir, gt_dir, mano_dir, dataset_suffix=f"{dataset_suffix}"
                 )
                 if res:
-                    output_pose[f"{dataset_suffix}_test"] = res
-            # # To display the results in the result file
-            output["submission_result"] = output_pose
+                    output.append({f"{dataset_suffix}_test": res})
+
         elif phase_codename == "shape_estimation":
-            output_shape = {}
+            output = []
             for dataset_suffix in ["umetrack", "hot3d"]:
                 res = evaluate_shape_dataset(
                     pred_dir, gt_dir, mano_dir, dataset_suffix=f"{dataset_suffix}"
                 )
                 if res:
-                    output_shape[f"{dataset_suffix}_test"] = res
-            # # To display the results in the result file
-            output["submission_result"] = output_shape
+                    output.append({f"{dataset_suffix}_test": res})
+
         print(f"Completed evaluation for {phase_codename}")
     return output
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    output = evaluate(
-        args.test_annotation_file, args.user_submission_file, args.phase_codename
-    )
-    print(output)
