@@ -175,8 +175,8 @@ def compute_fingertip_pck_auc(
 def compute_pose_metrics(
     pred_pose_params: torch.Tensor,
     gt_pose_params: torch.Tensor,
-    pred_global_xform: torch.Tensor,
-    gt_global_xform: torch.Tensor,
+    pred_wrist_xform: torch.Tensor,
+    gt_wrist_xform: torch.Tensor,
     pred_shape_params: torch.Tensor,
     gt_shape_params: torch.Tensor,
     is_right_hand: torch.Tensor,
@@ -188,8 +188,8 @@ def compute_pose_metrics(
     Args:
         pred_pose_params: N x 15, predicted pose parameters
         gt_pose_params: N x 15, ground truth pose parameters
-        pred_global_xform: N x 6, predicted global transformation
-        gt_global_xform: N x 6, ground truth global transformation
+        pred_wrist_xform: N x 6, predicted global transformation
+        gt_wrist_xform: N x 6, ground truth global transformation
         pred_shape_params: N x 10, predicted shape parameters
         gt_shape_params: N x 10, ground truth shape parameters
         is_right_hand: N x 1, boolean mask for right hand
@@ -206,14 +206,14 @@ def compute_pose_metrics(
     pred_mano_vertices, pred_landmarks = mano_layer.forward_kinematics(
         pred_shape_params,
         pred_pose_params,
-        pred_global_xform,
+        pred_wrist_xform,
         is_right_hand=is_right_hand,
     )
 
     gt_mano_vertices, gt_landmarks = mano_layer.forward_kinematics(
         gt_shape_params,
         gt_pose_params,
-        gt_global_xform,
+        gt_wrist_xform,
         is_right_hand=is_right_hand,
     )
 

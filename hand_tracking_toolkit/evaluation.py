@@ -65,27 +65,27 @@ def get_batch_pose_data(pose_data: List[Dict[str, Any]]) -> Tuple[
     torch.Tensor,
 ]:
     poses = []
-    global_xform = []
+    wrist_xform = []
     is_right_hand = []
     frame_ids = []
 
     for pose_entry in pose_data:
-        poses.append(torch.tensor(pose_entry["pose"]))
-        global_xform.append(torch.tensor(pose_entry["global_xform"]))
+        poses.append(torch.tensor(pose_entry["mano_theta"]))
+        wrist_xform.append(torch.tensor(pose_entry["wrist_xform"]))
         is_right_hand.append(pose_entry["hand_side"] == "right")
         frame_ids.append(pose_entry["frame_id"])
 
     poses = torch.vstack(poses)
-    global_xform = torch.vstack(global_xform)
+    wrist_xform = torch.vstack(wrist_xform)
     is_right_hand = torch.tensor(is_right_hand)
     frame_ids = torch.tensor(frame_ids)
 
     # Sort by frame id
     sort_order = torch.argsort(frame_ids)
     poses = poses[sort_order]
-    global_xform = global_xform[sort_order]
+    wrist_xform = wrist_xform[sort_order]
     is_right_hand = is_right_hand[sort_order]
-    return poses, global_xform, is_right_hand
+    return poses, wrist_xform, is_right_hand
 
 
 def compute_aggregate_metrics(all_metrics, all_num_frames):
@@ -116,8 +116,8 @@ def compute_overall_pose_metrics(
         shape_gt_seq = [x for x in shape_gt if x["sequence_name"] == seq]
 
         # Compute pose metrics
-        gt_poses, gt_global_xform, gt_is_right_hand = get_batch_pose_data(pose_gt_seq)
-        pred_poses, pred_global_xform, pred_is_right_hand = get_batch_pose_data(
+        gt_poses, gt_wrist_xform, gt_is_right_hand = get_batch_pose_data(pose_gt_seq)
+        pred_poses, pred_wrist_xform, pred_is_right_hand = get_batch_pose_data(
             pose_pred_seq
         )
 
@@ -129,8 +129,8 @@ def compute_overall_pose_metrics(
         pose_metrics = compute_pose_metrics(
             pred_poses,
             gt_poses,
-            pred_global_xform,
-            gt_global_xform,
+            pred_wrist_xform,
+            gt_wrist_xform,
             gt_shape_params,
             gt_shape_params,
             gt_is_right_hand,

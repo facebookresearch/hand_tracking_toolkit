@@ -2,7 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from hand_tracking_toolkit.dataset import HandSide, load_sequence_data
+from hand_tracking_toolkit.dataset import build_hand_dataset, HandSide
 from hand_tracking_toolkit.submissions import (
     PoseEstimationSubmissionSample,
     ShapeEstimationSubmissionSample,
@@ -37,30 +37,35 @@ def main() -> None:
     pose_samples = []
     shape_samples = []
     for sequence_name in tqdm(sequence_names):
-        sequence_data = load_sequence_data(
-            tar_path=input_dir / (sequence_name + ".tar"),
-            shape_params_path=input_dir / (sequence_name + "_shape_params.json"),
+        dataset = build_hand_dataset(
+            str(input_dir), [sequence_name], load_monochrome=False, load_rgb=False
         )
-        for hand_side in (HandSide.LEFT, HandSide.RIGHT):
-            shape_samples.append(
-                ShapeEstimationSubmissionSample(
-                    sequence_name=sequence_name,
-                    mano_beta=sequence_data.mano_betas[hand_side],
-                    hand_side=hand_side,
-                )
-            )
 
-        for n, _ in enumerate(sequence_data.frame_ids):
-            for hand_pose in sequence_data.hand_poses[n]:
+        for i, sample in enumerate(dataset):
+            for hand_side in (HandSide.LEFT, HandSide.RIGHT):
+                if i == 0:
+                    shape_samples.append(
+                        ShapeEstimationSubmissionSample(
+                            sequence_name=sequence_name,
+                            mano_beta=sample.mano_betas[hand_side],
+                            hand_side=hand_side,
+                        )
+                    )
+
+                if hand_side not in sample.hand_poses:
+                    continue
+                hand_pose = sample.hand_poses[hand_side]
+
                 pose_samples.append(
                     PoseEstimationSubmissionSample(
-                        sequence_name=sequence_data.sequence_name,
-                        frame_id=int(sequence_data.frame_ids[n]),
-                        pose=hand_pose.pose,
-                        global_xform=hand_pose.global_xform,
+                        sequence_name=sequence_name,
+                        frame_id=sample.frame_id,
+                        mano_theta=hand_pose.mano_theta,
+                        wrist_xform=hand_pose.wrist_xform,
                         hand_side=hand_pose.hand_side,
                     )
                 )
+
     write_pose_estimation_submission_file(
         output_dir / "test_pose_annotations.json", pose_samples
     )

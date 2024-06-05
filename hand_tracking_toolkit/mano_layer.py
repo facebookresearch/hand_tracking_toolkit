@@ -5,29 +5,6 @@ import smplx
 
 import torch
 
-mano_to_nimble_joint_mapping = [
-    16,
-    17,
-    18,
-    19,
-    20,
-    0,
-    14,
-    15,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    10,
-    11,
-    12,
-    7,
-    8,
-    9,
-]
-
 
 class MANOHandModel:
     N_VERT = 778
@@ -86,14 +63,14 @@ class MANOHandModel:
         self,
         shape_params: torch.Tensor,
         joint_angles: torch.Tensor,
-        global_xfrom: torch.Tensor,
+        wrist_xform: torch.Tensor,  # meter
         is_right_hand: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         assert shape_params.shape[0] == self.num_shape_params
         is_batched = len(joint_angles.shape) == 2
-        if len(global_xfrom.shape) == 1:
-            global_xfrom = torch.unsqueeze(global_xfrom, 0)
-        assert global_xfrom.shape[1] == 6
+        if len(wrist_xform.shape) == 1:
+            wrist_xform = torch.unsqueeze(wrist_xform, 0)
+        assert wrist_xform.shape[1] == 6
         if len(joint_angles.shape) == 1:
             joint_angles = torch.unsqueeze(joint_angles, 0)
         if self.use_pose_pca:
@@ -104,29 +81,29 @@ class MANOHandModel:
 
         # Left hand FK
         if torch.any(torch.logical_not(is_right_hand)):
-            left_global_xform = global_xfrom[torch.logical_not(is_right_hand)]
+            left_wrist_xform = wrist_xform[torch.logical_not(is_right_hand)]
             left_joint_angles = joint_angles[torch.logical_not(is_right_hand)]
             left_mano_output = self.mano_layer_left(
                 betas=shape_params[None]
-                .repeat(left_global_xform.shape[0], 1)
+                .repeat(left_wrist_xform.shape[0], 1)
                 .to(self.dtype),
-                global_orient=left_global_xform[:, :3].to(self.dtype),
+                global_orient=left_wrist_xform[:, :3].to(self.dtype),
                 hand_pose=left_joint_angles.to(self.dtype),
-                transl=left_global_xform[:, 3:].to(self.dtype),
+                transl=left_wrist_xform[:, 3:].to(self.dtype),
                 return_verts=True,  # MANO doesn't return landmarks as well if this is false
             )
 
         # Right hand FK
         if torch.any(is_right_hand):
-            right_global_xform = global_xfrom[is_right_hand]
+            right_wrist_xform = wrist_xform[is_right_hand]
             right_joint_angles = joint_angles[is_right_hand]
             right_mano_output = self.mano_layer_right(
                 betas=shape_params[None]
-                .repeat(right_global_xform.shape[0], 1)
+                .repeat(right_wrist_xform.shape[0], 1)
                 .to(self.dtype),
-                global_orient=right_global_xform[:, :3].to(self.dtype),
+                global_orient=right_wrist_xform[:, :3].to(self.dtype),
                 hand_pose=right_joint_angles.to(self.dtype),
-                transl=right_global_xform[:, 3:].to(self.dtype),
+                transl=right_wrist_xform[:, 3:].to(self.dtype),
                 return_verts=True,  # MANO doesn't return landmarks as well if this is false
             )
 
@@ -184,10 +161,6 @@ class MANOHandModel:
         if self.joint_mapper is not None:
             out_landmarks = out_landmarks[:, self.joint_mapper]
 
-        # convert to mm
-        out_vertices *= 1e3
-        out_landmarks *= 1e3
-
         if not is_batched:
             out_vertices = torch.squeeze(out_vertices, 0)
             out_landmarks = torch.squeeze(out_landmarks, 0)
@@ -200,7 +173,7 @@ class MANOHandModel:
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Method to get the vertices and landmarks of the hand using only the shape
-        parameters and passing 0s for pose params and global xform.
+        parameters and passing 0s for pose params and wrist xform.
 
         Args:
             shape_params: N x 6 (N is the number of frames) or 6,
@@ -248,10 +221,6 @@ class MANOHandModel:
 
         if self.joint_mapper is not None:
             out_landmarks = out_landmarks[:, self.joint_mapper]
-
-        # convert to mm
-        out_vertices *= 1e3
-        out_landmarks *= 1e3
 
         if not is_batched:
             out_vertices = torch.squeeze(out_vertices, 0)

@@ -25,8 +25,8 @@ class WriteSubmissionFilesTest(unittest.TestCase):
                     PoseEstimationSubmissionSample(
                         sequence_name="0000",
                         frame_id=0,
-                        pose=np.zeros(15),
-                        global_xform=np.zeros(6),
+                        mano_theta=np.zeros(15),
+                        wrist_xform=np.zeros(6),
                         hand_side=HandSide.LEFT,
                     )
                 ],

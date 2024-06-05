@@ -11,8 +11,8 @@ from hand_tracking_toolkit.dataset import HandSide
 class PoseEstimationSubmissionSample:
     sequence_name: str
     frame_id: int
-    pose: np.ndarray
-    global_xform: np.ndarray
+    mano_theta: np.ndarray
+    wrist_xform: np.ndarray
     hand_side: HandSide
 
 
@@ -35,17 +35,17 @@ def write_pose_estimation_submission_file(
 ):
     samples_to_serialize = []
     for sample in samples:
-        assert len(sample.pose.shape) == 1
-        assert sample.pose.shape[0] == 15
-        assert len(sample.global_xform.shape) == 1
-        assert sample.global_xform.shape[0] == 6
+        assert len(sample.mano_theta.shape) == 1
+        assert sample.mano_theta.shape[0] == 15
+        assert len(sample.wrist_xform.shape) == 1
+        assert sample.wrist_xform.shape[0] == 6
         assert isinstance(sample.frame_id, int)
         samples_to_serialize.append(
             {
                 "sequence_name": sample.sequence_name,
                 "frame_id": sample.frame_id,
-                "pose": sample.pose.tolist(),
-                "global_xform": sample.global_xform.tolist(),
+                "mano_theta": sample.mano_theta.tolist(),
+                "wrist_xform": sample.wrist_xform.tolist(),
                 "hand_side": HAND_SIDE_TO_STR[sample.hand_side],
             }
         )

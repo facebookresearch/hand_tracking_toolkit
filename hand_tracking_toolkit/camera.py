@@ -101,10 +101,9 @@ import math
 from typing import Tuple, Type
 
 import numpy as np
-from hand_tracking_toolkit import affine
 from scipy.spatial.transform import Rotation
 
-from . import camera_distortion as dis
+from . import affine, camera_distortion as dis
 
 
 # ---------------------------------------------------------------------
@@ -246,10 +245,12 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         distort_coeffs,
         T_world_from_eye=None,
         serial="",
+        label="",
     ):  # pylint: disable=super-init-not-called (see issue 4790 on pylint github)
         self.width = width
         self.height = height
         self.serial = serial
+        self.label = label
 
         # f can be either a scalar or (fx,fy) pair. We only fit scalars,
         # but may load (fx, fy) from a stored file.
@@ -385,6 +386,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         scale=1,
         T_world_from_eye=None,
         serial=None,
+        label=None,
     ):
         """
         Return intrinsics for a crop of the sensor image.
@@ -408,6 +410,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             self.distort,
             self.T_world_from_eye if T_world_from_eye is None else T_world_from_eye,
             self.serial if serial is None else serial,
+            self.label if label is None else label,
         )
 
     def subrect(self, transform, width, height):
@@ -451,6 +454,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             self.distort_coeffs,
             self.T_world_from_eye,
             self.serial,
+            self.label,
         )
         return cam
 
@@ -461,6 +465,8 @@ def from_json(js):
     width = calib["image_width"]
     height = calib["image_height"]
     model = calib["projection_model_type"]
+    label = calib["label"]
+    serial = calib["serial_number"]
 
     T_world_from_camera = np.eye(4, dtype=np.float32)
     T_world_from_camera[:3, :3] = Rotation.from_quat(
@@ -468,8 +474,14 @@ def from_json(js):
     ).as_matrix()
     T_world_from_camera[:3, 3] = np.array(js["T_world_from_camera"]["translation_xyz"])
 
-    fx, fy, cx, cy = calib["projection_params"][:4]
-    coeffs = calib["projection_params"][4:]
+    if model == "CameraModelType.FISHEYE624" and len(calib["projection_params"]) == 15:
+        # TODO: Aria data hack
+        f, cx, cy = calib["projection_params"][:3]
+        fx = fy = f
+        coeffs = calib["projection_params"][3:]
+    else:
+        fx, fy, cx, cy = calib["projection_params"][:4]
+        coeffs = calib["projection_params"][4:]
 
     cls = model_by_name[model]
 
@@ -480,6 +492,8 @@ def from_json(js):
         (cx, cy),
         coeffs,
         T_world_from_camera,
+        serial=serial,
+        label=label,
     )
 
 

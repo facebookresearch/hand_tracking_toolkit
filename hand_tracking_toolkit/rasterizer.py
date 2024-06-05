@@ -115,9 +115,12 @@ def rasterize_mesh(
     # Compute the box size for each triangle, take the largest one.
     # This can be suboptimal if one triangle is significantly larger than
     # the other ones after projection, but this step is essential for vectorization
+    H = camera.height
+    W = camera.width
+
     vers2d_tri = verts2d[faces]
-    min_xy = np.floor(vers2d_tri.min(1))
-    max_xy = np.ceil(vers2d_tri.max(1))
+    min_xy = np.floor(vers2d_tri.min(1)).clip(min=0)
+    max_xy = np.minimum(np.ceil(vers2d_tri.max(1)), np.array([W - 1, H - 1]))
     box_size = max_xy - min_xy
     max_box_size = box_size.max(axis=0)
     max_xy = min_xy + max_box_size[None, :]
@@ -154,8 +157,6 @@ def rasterize_mesh(
     vt = bary[:, None] @ v_tri[:, None]
     vt = vt.reshape((-1, 3))
 
-    H = camera.height
-    W = camera.width
     in_boundary = np.logical_and(
         np.logical_and(yt >= 0, yt <= H - 1),
         np.logical_and(xt >= 0, xt <= W - 1),

@@ -1,17 +1,21 @@
 import dataclasses
 import enum
 import functools
+import io
 import json
 import os.path
 import pathlib
+import tarfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import cv2
 
 import numpy as np
+import PIL.Image
 import webdataset as wds  # @manual
+from scipy.spatial.transform import Rotation
 
 from .camera import CameraModel, from_json, PinholePlaneCameraModel
 
@@ -26,148 +30,82 @@ class HandSide(enum.Enum):
 @dataclasses.dataclass
 class HandPose:
     hand_side: HandSide
-    pose: np.ndarray
-    global_xform: np.ndarray
+    mano_theta: np.ndarray
+    wrist_xform: np.ndarray
 
 
 @dataclasses.dataclass
-class SequenceData:
-    sequence_name: str
-    frame_ids: np.ndarray
-    mano_betas: Dict[HandSide, np.ndarray]
-    images: List[Dict[str, np.ndarray]]
-    cameras: List[Dict[str, CameraModel]]
-    hand_poses: List[List[HandPose]]
-    crop_cameras: List[Dict[HandSide, Dict[str, PinholePlaneCameraModel]]]
-
-
-@dataclasses.dataclass
-class SampleData:
+class HandData:
+    url: str
     frame_id: int
-    sequence_name: str
     images: Dict[str, np.ndarray]
     cameras: Dict[str, CameraModel]
-    hand_poses: List[HandPose]
-    crop_cameras: Dict[HandSide, Dict[str, PinholePlaneCameraModel]]
+    hand_poses: Optional[Dict[HandSide, HandPose]] = None
+    mano_betas: Optional[Dict[HandSide, np.ndarray]] = None
 
 
 @dataclasses.dataclass
 class HandCropData:
-    sequence_name: str
-    image: np.ndarray
-    camera: PinholePlaneCameraModel
-    hand_pose: HandPose
-    mano_beta: np.ndarray
+    url: str
+    frame_id: int
+    images: Dict[str, np.ndarray]
+    cameras: Dict[str, PinholePlaneCameraModel]
+    hand_pose: Optional[HandPose] = None
+    mano_beta: Optional[np.ndarray] = None
 
 
-def cam_params_decoder(
-    value: Any,
-) -> Tuple[Optional[Dict[str, CameraModel]], Dict[HandSide, Dict[str, CameraModel]]]:
-    cam_params_dict = json.loads(value)
+def decode_cam_params(j) -> Dict[str, CameraModel]:
     cameras: Dict[str, CameraModel] = {}
-    for n, cam in enumerate(cam_params_dict["raw_cam_params"]):
-        cameras[f"image_{n:04d}"] = from_json(cam)
+    for stream_id, cam_params in j.items():
+        cameras[stream_id] = from_json(cam_params)
+    return cameras
 
-    crop_cameras: Dict[HandSide, Dict[str, CameraModel]] = defaultdict(dict)
-    crop_params = cam_params_dict["crop_params"]
+
+def decode_hand_crop_params(
+    j, crop_size: int
+) -> Dict[HandSide, Dict[str, PinholePlaneCameraModel]]:
+    crop_cameras: Dict[HandSide, Dict[str, PinholePlaneCameraModel]] = defaultdict(dict)
+
     for k, hand_side in zip(("left", "right"), (HandSide.LEFT, HandSide.RIGHT)):
-        for p in crop_params[k]:
-            view_idx = p["view_idx"]
-            fov = p["fov"]
+        for stream_id, p in j[k].items():
+            fov = p["crop_camera_fov"]
+            f = crop_size / 2 / np.tan(fov / 2)
+            c = (crop_size - 1) / 2
 
-            f = TARGET_CROP_SIZE / 2 / np.tan(fov / 2)
-            c = (TARGET_CROP_SIZE - 1) / 2
+            T_world_from_camera = np.eye(4, dtype=np.float32)
+            T_world_from_camera[:3, :3] = Rotation.from_quat(
+                np.array(p["T_world_from_crop_camera"]["quaternion_wxyz"])
+            ).as_matrix()
+            T_world_from_camera[:3, 3] = np.array(
+                p["T_world_from_crop_camera"]["translation_xyz"]
+            )
 
-            crop_cameras[hand_side][f"image_{view_idx:04d}"] = PinholePlaneCameraModel(
-                width=TARGET_CROP_SIZE,
-                height=TARGET_CROP_SIZE,
+            crop_cameras[hand_side][stream_id] = PinholePlaneCameraModel(
+                width=crop_size,
+                height=crop_size,
                 f=(f, f),
                 c=(c, c),
                 distort_coeffs=[],
-                T_world_from_eye=np.array(p["T_world_from_camera"]).astype(np.float32),
+                T_world_from_eye=T_world_from_camera,
             )
 
-    return cameras, crop_cameras
+    return crop_cameras
 
 
-def pose_params_decoder(value: Any) -> Optional[List[HandPose]]:
-    pose_params_dict = json.loads(value)
-    hand_poses: List[HandPose] = []
+def decode_hand_pose(j) -> Optional[Dict[HandSide, HandPose]]:
+    if j is None:
+        return None
+
+    hand_poses: Dict[HandSide, HandPose] = {}
+
     for k, hand_side in zip(("left", "right"), (HandSide.LEFT, HandSide.RIGHT)):
-        hand_pose = HandPose(
+        hand_poses[hand_side] = HandPose(
             hand_side=hand_side,
-            pose=np.array(pose_params_dict[k]["pose"]),
-            global_xform=np.array(pose_params_dict[k]["global_xform"]),
+            mano_theta=np.array(j[k]["thetas"]),
+            wrist_xform=np.array(j[k]["wrist_xform"]),
         )
-        hand_poses.append(hand_pose)
+
     return hand_poses
-
-
-def read_sample_dict(
-    wds_dict: Dict[str, Any],
-    read_images: bool = False,
-) -> SampleData:
-
-    frame_id = int(wds_dict["__key__"].split("sample_")[1])
-    sequence_name = pathlib.Path(wds_dict["__url__"]).name.split(".tar")[0]
-    if read_images:
-        image_names = {
-            k.split(".")[0] for k in wds_dict.keys() if k.startswith("image")
-        }
-        images = {k: wds_dict[k + ".png"] for k in image_names}
-    else:
-        images = {}
-    cameras, crop_cameras = wds_dict["cam_params.json"]
-    hand_poses = wds_dict["pose_params.json"]
-
-    return SampleData(
-        frame_id=frame_id,
-        sequence_name=sequence_name,
-        images=images,
-        cameras=cameras,
-        hand_poses=hand_poses,
-        crop_cameras=crop_cameras,
-    )
-
-
-def load_sequence_data(
-    tar_path: Path,
-    shape_params_path: Path,
-    load_images: bool = False,
-) -> SequenceData:
-    decoders = [
-        wds.handle_extension("cam_params.json", cam_params_decoder),
-        wds.handle_extension("pose_params.json", pose_params_decoder),
-    ]
-    if load_images:
-        decoders += ["pil"]
-    _read_sample_dict = functools.partial(read_sample_dict, read_images=load_images)
-
-    dataset = wds.WebDataset(str(tar_path)).decode(*decoders).map(_read_sample_dict)
-    frame_ids, images, cameras, hand_poses, crop_cameras = [], [], [], [], []
-    sequence_name: Optional[str] = None
-    for sample in iter(dataset):
-        sequence_name = sample.sequence_name
-        frame_ids.append(sample.frame_id)
-        cameras.append(sample.cameras)
-        images.append(sample.images)
-        hand_poses.append(sample.hand_poses)
-        crop_cameras.append(sample.crop_cameras)
-    assert sequence_name is not None
-    mano_betas = json.loads(Path(shape_params_path).read_text())
-
-    return SequenceData(
-        sequence_name=sequence_name,
-        frame_ids=np.array(frame_ids),
-        mano_betas={
-            HandSide.LEFT: np.array(mano_betas["left"]),
-            HandSide.RIGHT: np.array(mano_betas["right"]),
-        },
-        images=images,
-        cameras=cameras,
-        hand_poses=hand_poses,
-        crop_cameras=crop_cameras,
-    )
 
 
 def warp_image(
@@ -216,63 +154,135 @@ def warp_image(
     return cv2.remap(src_image, map_x, map_y, interpolation)
 
 
-class HandCropDataset(wds.WebDataset):
-    def __init__(self, root: str, sequence_names: List[str], *args, **kwargs):
-        super().__init__(
-            [os.path.join(root, f"{s}.tar") for s in sequence_names],
-            *args,
-            **kwargs,
+def make_hand_crops(
+    sample: HandData,
+    all_crop_cameras: Dict[HandSide, Dict[str, PinholePlaneCameraModel]],
+) -> List[HandCropData]:
+    hand_crop_data = []
+    for hand_side, crop_cameras in all_crop_cameras.items():
+        stream_ids_sel = [
+            stream_id for stream_id in crop_cameras if stream_id in sample.images
+        ]
+
+        images = {}
+        cameras = {}
+        for stream_id in stream_ids_sel:
+            images[stream_id] = warp_image(
+                sample.cameras[stream_id],
+                crop_cameras[stream_id],
+                np.array(sample.images[stream_id]),
+            )
+            cameras[stream_id] = crop_cameras[stream_id]
+
+        hand_crop_data.append(
+            HandCropData(
+                url=sample.url,
+                frame_id=sample.frame_id,
+                images=images,
+                cameras=cameras,
+                hand_pose=(
+                    sample.hand_poses[hand_side]
+                    if sample.hand_poses is not None
+                    else None
+                ),
+                mano_beta=(
+                    sample.mano_betas[hand_side]
+                    if sample.mano_betas is not None
+                    else None
+                ),
+            )
         )
 
-        self.root = root
+    return hand_crop_data
+
+
+class SampleDecoder:
+    def __init__(
+        self,
+        load_monochrome: bool,
+        load_rgb: bool,
+        output_crops: bool,
+        crop_size: int,
+    ):
+        self.load_monochrome = load_monochrome
+        self.load_rgb = load_rgb
+        self.output_crops = output_crops
+        self.crop_size = crop_size
         self.shape_params = {}
 
-    def _get_shape_params(self, sequence_name: str) -> Dict[HandSide, np.ndarray]:
-        if sequence_name not in self.shape_params:
-            with open(
-                os.path.join(self.root, f"{sequence_name}_shape_params.json"), "rb"
-            ) as fp:
-                shape_params_dict = json.load(fp)
-
-                self.shape_params[sequence_name] = {
-                    hand_side: shape_params_dict[k]
+    def _get_shape_params(self, url: str) -> Dict[HandSide, np.ndarray]:
+        if url not in self.shape_params:
+            tar = tarfile.open(url)
+            HAND_SHAPE_FILE = "__hand_shapes.json__"
+            if HAND_SHAPE_FILE in tar.getnames():
+                # pyre-ignore
+                shape_params_dict = json.load(tar.extractfile(HAND_SHAPE_FILE))
+                self.shape_params[url] = {
+                    hand_side: np.array(shape_params_dict[k])
                     for k, hand_side in zip(
                         ("left", "right"), (HandSide.LEFT, HandSide.RIGHT)
                     )
                 }
+            else:
+                self.shape_params[url] = None
+            tar.close()
 
-        return self.shape_params[sequence_name]
+        return self.shape_params[url]
 
-    def __iter__(self):
-        for sample in super().__iter__():
-            hand_poses = {p.hand_side: p for p in sample.hand_poses}
+    def __call__(self, sample):
+        url = sample["__url__"]
+        frame_id = int(sample["__key__"])
 
-            for hand_side, crop_cameras in sample.crop_cameras.items():
-                for k in crop_cameras:
-                    image = warp_image(
-                        sample.cameras[k], crop_cameras[k], np.array(sample.images[k])
-                    )
+        cameras = decode_cam_params(json.loads(sample["cameras.json"]))
+        hand_poses = decode_hand_pose(json.loads(sample["hands.json"]))
 
-                    yield HandCropData(
-                        sequence_name=sample.sequence_name,
-                        image=image,
-                        camera=crop_cameras[k],
-                        hand_pose=hand_poses[hand_side],
-                        mano_beta=self._get_shape_params(sample.sequence_name)[
-                            hand_side
-                        ],
-                    )
+        images = {}
+        for stream_id, camera in cameras.items():
+            is_rgb = "rgb" in camera.label
+            if is_rgb and not self.load_rgb:
+                continue
+            if not is_rgb and not self.load_monochrome:
+                continue
+
+            img = PIL.Image.open(io.BytesIO(sample[f"image_{stream_id}.jpg"]))
+            img.load()
+            img = img.convert("RGB" if is_rgb else "L")
+            images[stream_id] = np.asarray(img)
+
+        hand_data = HandData(
+            frame_id=frame_id,
+            url=url,
+            images=images,
+            cameras=cameras,
+            hand_poses=hand_poses,
+            mano_betas=self._get_shape_params(url),
+        )
+        if not self.output_crops:
+            return hand_data
+
+        crop_cameras = decode_hand_crop_params(
+            json.loads(sample["hand_crops.json"]), self.crop_size
+        )
+        return make_hand_crops(hand_data, crop_cameras)
 
 
-def build_hand_crop_dataset(root: str, sequence_names: List[str]) -> HandCropDataset:
-    decoders = [
-        wds.handle_extension("cam_params.json", cam_params_decoder),
-        wds.handle_extension("pose_params.json", pose_params_decoder),
-        "pil",
-    ]
-    _read_sample_dict = functools.partial(read_sample_dict, read_images=True)
-
-    # pyre-ignore
-    return (
-        HandCropDataset(root, sequence_names).decode(*decoders).map(_read_sample_dict)
+def build_hand_dataset(
+    root: str,
+    sequence_names: List[str],
+    load_monochrome: bool = True,
+    load_rgb: bool = False,
+    output_crops: bool = False,
+    crop_size: int = 128,
+):
+    decoder = SampleDecoder(
+        load_monochrome=load_monochrome,
+        load_rgb=load_rgb,
+        output_crops=output_crops,
+        crop_size=crop_size,
     )
+
+    dataset = wds.WebDataset(
+        [os.path.join(root, f"{s}.tar") for s in sequence_names],
+    ).map(decoder)
+
+    return dataset
