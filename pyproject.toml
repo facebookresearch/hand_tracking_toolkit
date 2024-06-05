@@ -11,7 +11,7 @@ dependencies = [
     "typing_extensions",
     "torch",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 authors = [
   {name = "Yann Labbe", email = "ylabbe@meta.com"},
   {name = "Linguang Zhang", email = "linguang@meta.com"},
