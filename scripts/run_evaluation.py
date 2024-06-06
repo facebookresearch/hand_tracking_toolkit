@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 import argparse
 
 from hand_tracking_toolkit.evaluation import evaluate

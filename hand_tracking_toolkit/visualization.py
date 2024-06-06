@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # pyre-unsafe
 from typing import List
 
@@ -8,8 +10,6 @@ import torch
 from .camera import CameraModel
 from .dataset import HandCropData, HandData, HandPose, HandSide
 from .mano_layer import MANOHandModel
-from hand_tracking_toolkit.mano_layer import MANOHandModel
-
 from .rasterizer import rasterize_mesh
 
 CONTRASTIVE_COLORS = [

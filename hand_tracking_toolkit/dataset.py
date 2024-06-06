@@ -1,14 +1,13 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 import dataclasses
 import enum
-import functools
 import io
 import json
 import os.path
-import pathlib
 import tarfile
 from collections import defaultdict
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional
 
 import cv2
 

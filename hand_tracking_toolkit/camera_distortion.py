@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # pyre-unsafe
 """
 Various implementations of Distortion and CameraProjection types.

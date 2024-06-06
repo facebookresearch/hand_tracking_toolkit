@@ -1,8 +1,9 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 import os
 from typing import List, Optional
 
 import smplx
-
 import torch
 
 

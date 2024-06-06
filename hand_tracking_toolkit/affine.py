@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # pyre-unsafe
 """
 Helpers for affine transformation matrix operations.
