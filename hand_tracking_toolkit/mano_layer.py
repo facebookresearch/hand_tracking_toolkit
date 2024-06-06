@@ -1,10 +1,22 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
+import numpy as np
 
 import smplx
 import torch
+
+# Without this hack loading the .pkl files could fail when using
+# a newer version of numpy
+np.bool = np.bool_
+np.int = np.int_
+np.float = np.float_
+np.complex = np.complex_
+np.object = np.object_
+np.unicode = np.unicode_
+np.str = np.str_
 
 
 class MANOHandModel:
@@ -66,7 +78,7 @@ class MANOHandModel:
         joint_angles: torch.Tensor,
         wrist_xform: torch.Tensor,  # meter
         is_right_hand: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         assert shape_params.shape[0] == self.num_shape_params
         is_batched = len(joint_angles.shape) == 2
         if len(wrist_xform.shape) == 1:
@@ -171,7 +183,7 @@ class MANOHandModel:
     def shape_only_forward_kinematics(
         self,
         shape_params: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Method to get the vertices and landmarks of the hand using only the shape
         parameters and passing 0s for pose params and wrist xform.

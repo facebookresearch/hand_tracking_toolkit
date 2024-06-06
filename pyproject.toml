@@ -10,6 +10,12 @@ dependencies = [
     "scipy",
     "typing_extensions",
     "torch",
+    "smplx",
+    "opencv-python",
+    "webdataset",
+    "pillow",
+    "chumpy",
+    "tqdm",
 ]
 requires-python = ">=3.7"
 authors = [
@@ -30,3 +36,7 @@ classifiers = [
 pythonpath = [
   "."
 ]
+
+[tool.setuptools]
+packages = ["hand_tracking_toolkit"]
+py-modules = []
