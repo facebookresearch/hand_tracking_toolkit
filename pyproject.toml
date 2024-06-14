@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hand_tracking_toolkit"
+version = "0.1"
+dependencies = [
+    "numpy",
+    "scipy",
+    "typing_extensions",
+    "torch",
+    "opencv-python",
+    "webdataset",
+    "pillow",
+    "tqdm",
+]
+requires-python = ">=3.7"
+authors = [
+  {name = "Yann Labbe", email = "ylabbe@meta.com"},
+  {name = "Linguang Zhang", email = "linguang@meta.com"},
+  {name = "Abhay Mittal", email = "abhayml@meta.com"},
+  {name = "Weiguang Si", email = "weiguang@meta.com"},
+  {name = "Shreyas Hampali", email = "hampali@meta.com"},
+]
+maintainers = [
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
+
+[tool.setuptools]
+packages = ["hand_tracking_toolkit", "hand_tracking_toolkit.hand_models"]
+py-modules = []
