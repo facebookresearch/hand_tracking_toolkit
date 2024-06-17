@@ -61,7 +61,7 @@ def _finger_fk(
     joint_local_xfs: torch.Tensor, parent_transform: torch.Tensor
 ) -> List[torch.Tensor]:
     """
-    each finger consisits 4 DoF / Joints,
+    each finger consists 4 DoF / Joints,
     and returns 3 transformation frames
     Input:
         joint_local_xfs: (B, 4, 4)
@@ -123,9 +123,9 @@ def _hand_skinning_transform(
         joint_angles: (B, 20)
         wrist_transforms: (B, 4, 4)
     Return:
-        skinning_matrics: (B, 17, 4, 4)
+        skinning_matrices: (B, 17, 4, 4)
     """
-    transform_mats = [wrist_transforms] * 2  # [root_transform, wrist_transfor]
+    transform_mats = [wrist_transforms] * 2  # [root_transform, wrist_transforms]
     d = DOF_PER_FINGER
 
     joint_local_xfs = _joint_local_transform(
@@ -212,18 +212,20 @@ def skin_points(
 
     # This allows querying the product of leading dimensions without making the
     # model specialized to a particular shape
-    numel = torch.flatten(joint_angles, end_dim=-2).shape[0] if len(leading_dims) else 1
-
-    batched_joint_rest_positions = joint_rest_positions.reshape(numel, -1, 3)
-
-    skin_xfs = _hand_skinning_transform(
-        rotation_axis=joint_rotation_axes.reshape(numel, -1, 3),
-        rest_poses=batched_joint_rest_positions,
-        joint_angles=joint_angles.reshape(numel, -1),
-        wrist_transforms=wrist_transforms.reshape(numel, 4, 4),
+    num_el = (
+        torch.flatten(joint_angles, end_dim=-2).shape[0] if len(leading_dims) else 1
     )
 
-    verts = _get_skinned_vertices(points.reshape(numel, -1, 3), skin_mat)
+    batched_joint_rest_positions = joint_rest_positions.reshape(num_el, -1, 3)
+
+    skin_xfs = _hand_skinning_transform(
+        rotation_axis=joint_rotation_axes.reshape(num_el, -1, 3),
+        rest_poses=batched_joint_rest_positions,
+        joint_angles=joint_angles.reshape(num_el, -1),
+        wrist_transforms=wrist_transforms.reshape(num_el, 4, 4),
+    )
+
+    verts = _get_skinned_vertices(points.reshape(num_el, -1, 3), skin_mat)
     skinned_vecs = _lbs(skin_xfs, verts)[..., :3]
     skinned_vecs = skinned_vecs.reshape(
         list(leading_dims) + list(skinned_vecs.shape[-2:])
