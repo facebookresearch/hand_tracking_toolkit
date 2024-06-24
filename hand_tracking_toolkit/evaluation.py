@@ -35,14 +35,25 @@ from .metrics import compute_pose_metrics, compute_shape_metrics
 
 
 def extract_tar(tar_file: Path, extract_dir: Path) -> None:
-    assert tar_file.exists() and tar_file.suffix == ".tar"
+    assert tar_file.exists()
 
-    with tarfile.TarFile(tar_file) as tf:
-        tf.extractall(extract_dir)
-    return
+    if tar_file.suffix == ".tar":
+        mode = "r"
+    elif tar_file.suffix == ".gz":
+        mode = "r:gz"
+    elif tar_file.suffix == ".tgz":
+        mode = "r:gz"
+    else:
+        raise RuntimeError("Incorrect tar file format")
+
+    tf = tarfile.open(tar_file, mode)
+    tf.extractall(extract_dir)
+    tf.close()
 
 
 def group_by_sequence_names(all_entries):
+    if all_entries is None:
+        return
     sequence_name_to_entries = collections.defaultdict(list)
     for entry in all_entries:
         sequence_name_to_entries[entry["sequence_name"]].append(entry)
