@@ -180,23 +180,29 @@ def get_keypoints_and_mesh(
     pose_type: str = "mano",
 ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
     keypoints = verts = faces = None
+    default_ret = (keypoints, verts, faces)
+
     if hand_pose is None or hand_shape is None:
-        return keypoints, verts, faces
+        return default_ret
 
     if pose_type == "mano":
-        keypoints, verts, faces = mano_forward_kinematics(
+        if hand_pose.mano is None:
+            return default_ret
+
+        return mano_forward_kinematics(
             hand_pose.mano,
             hand_shape.mano_beta,
             mano_model,
         )
     else:  # umetrack
-        keypoints, verts, faces = umetrack_forward_kinematics(
+        if hand_pose.umetrack is None:
+            return default_ret
+
+        return umetrack_forward_kinematics(
             hand_pose.umetrack,
             hand_shape.umetrack,
             requires_mesh=True,
         )
-
-    return keypoints, verts, faces
 
 
 def visualize_keypoints_and_mesh(
@@ -257,12 +263,15 @@ def visualize_hand_data(
     keypoints_and_meshes = {}
     if hand_poses is not None and hand_shape is not None:
         for hand_side in hand_poses:
-            keypoints_and_meshes[hand_side] = get_keypoints_and_mesh(
+            keypoints, verts, faces = get_keypoints_and_mesh(
                 hand_poses[hand_side],
                 hand_shape,
                 mano_model,
                 pose_type,
             )
+            if keypoints is None:
+                continue
+            keypoints_and_meshes[hand_side] = (keypoints, verts, faces)
 
     all_vis = []
     for stream_id, image in data.images.items():
@@ -308,19 +317,23 @@ def visualize_hand_crop_data(
     all_vis = []
     for stream_id, image in data.images.items():
         vis = image
-        if hand_pose is None or keypoints is None or verts is None or faces is None:
-            continue
-        vis = visualize_keypoints_and_mesh(
-            verts=verts.numpy(),
-            faces=faces.numpy(),
-            keypoints=keypoints.numpy(),
-            hand_side=hand_pose.hand_side,
-            image=vis,
-            camera=data.cameras[stream_id],
-            visualize_mesh=visualize_mesh,
-            visualize_keypoints=visualize_keypoints,
-            alpha=alpha,
-        )
+        if (
+            hand_pose is not None
+            and keypoints is not None
+            and verts is not None
+            and faces is not None
+        ):
+            vis = visualize_keypoints_and_mesh(
+                verts=verts.numpy(),
+                faces=faces.numpy(),
+                keypoints=keypoints.numpy(),
+                hand_side=hand_pose.hand_side,
+                image=vis,
+                camera=data.cameras[stream_id],
+                visualize_mesh=visualize_mesh,
+                visualize_keypoints=visualize_keypoints,
+                alpha=alpha,
+            )
         all_vis.append(vis)
 
     return hcat_images(all_vis)

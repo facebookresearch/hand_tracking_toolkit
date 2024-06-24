@@ -48,8 +48,8 @@ class HandSide(Enum):
 @dataclasses.dataclass
 class HandPoseCollection:
     hand_side: HandSide
-    mano: MANOHandPose
-    umetrack: UmeTrackHandPose
+    mano: Optional[MANOHandPose] = None
+    umetrack: Optional[UmeTrackHandPose] = None
 
 
 @dataclasses.dataclass
@@ -91,6 +91,9 @@ def decode_hand_crop_params(
     crop_cameras: Dict[HandSide, Dict[str, PinholePlaneCameraModel]] = defaultdict(dict)
 
     for k, hand_side in zip(("left", "right"), (HandSide.LEFT, HandSide.RIGHT)):
+        if k not in j or j[k] is None:
+            continue
+
         for stream_id, p in j[k].items():
             fov = p["crop_camera_fov"]
             f = crop_size / 2 / np.tan(fov / 2)
@@ -121,23 +124,29 @@ def decode_hand_pose(j) -> Dict[HandSide, HandPoseCollection]:
         if k not in j or j[k] is None:
             continue
 
-        mano_hand_pose = MANOHandPose(
-            hand_side=torch.tensor(0 if hand_side == HandSide.LEFT else 1),
-            mano_theta=torch.tensor(j[k]["mano_pose"]["thetas"]),
-            wrist_xform=torch.tensor(j[k]["mano_pose"]["wrist_xform"]),
-        )
+        umetrack_hand_pose = None
+        mano_hand_pose = None
 
-        T_world_from_wrist = j[k]["umetrack_pose"]["T_world_from_wrist"]
-        umetrack_hand_pose = UmeTrackHandPose(
-            hand_side=torch.tensor(0 if hand_side == HandSide.LEFT else 1),
-            joint_angles=torch.tensor(j[k]["umetrack_pose"]["joint_angles"]),
-            wrist_xform=torch.from_numpy(
-                math_utils.quat_trans_to_matrix(
-                    *T_world_from_wrist["quaternion_wxyz"],
-                    *T_world_from_wrist["translation_xyz"],
+        if "umetrack_pose" in j[k]:
+            T_world_from_wrist = j[k]["umetrack_pose"]["T_world_from_wrist"]
+            umetrack_hand_pose = UmeTrackHandPose(
+                hand_side=torch.tensor(0 if hand_side == HandSide.LEFT else 1),
+                joint_angles=torch.tensor(j[k]["umetrack_pose"]["joint_angles"]),
+                wrist_xform=torch.from_numpy(
+                    math_utils.quat_trans_to_matrix(
+                        *T_world_from_wrist["quaternion_wxyz"],
+                        *T_world_from_wrist["translation_xyz"],
+                    )
+                ),
+            )
+            # only look for mano pose if umetrack pose is available
+            if "mano_pose" in j[k]:
+                # It's possible that MANO registration could fail at some frames
+                mano_hand_pose = MANOHandPose(
+                    hand_side=torch.tensor(0 if hand_side == HandSide.LEFT else 1),
+                    mano_theta=torch.tensor(j[k]["mano_pose"]["thetas"]),
+                    wrist_xform=torch.tensor(j[k]["mano_pose"]["wrist_xform"]),
                 )
-            ),
-        )
 
         hand_poses[hand_side] = HandPoseCollection(
             hand_side=hand_side,

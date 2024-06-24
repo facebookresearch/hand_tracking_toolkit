@@ -16,6 +16,8 @@ import argparse
 import logging
 from pathlib import Path
 
+import numpy as np
+
 from hand_tracking_toolkit.dataset import build_hand_dataset, HandSide
 from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     forward_kinematics as umetrack_forward_kinematics,
@@ -56,33 +58,49 @@ def main() -> None:
     pose_samples = []
     shape_samples = []
     landmarks_samples = []
+
     for sequence_name in tqdm(sequence_names):
         dataset = build_hand_dataset(
-            str(input_dir), [sequence_name], load_monochrome=False, load_rgb=False
+            str(input_dir),
+            [sequence_name],
+            load_monochrome=False,
+            load_rgb=False,
+            output_crops=True,
         )
 
-        for i, sample in enumerate(dataset):
-            for hand_side in (HandSide.LEFT, HandSide.RIGHT):
-                if i == 0:
+        shape_saved = False
+        for hand_crops in dataset:
+            for sample in hand_crops:
+                if not shape_saved:
+                    # For each sequence, save the shape once. The shape parameters
+                    # are shared between left/right hands
                     shape_samples.append(
                         MANOShapeSample(
                             sequence_name=sequence_name,
                             mano_beta=sample.hand_shape.mano_beta.numpy(),
-                            hand_side=hand_side,
+                            hand_side=HandSide.LEFT,
                         )
                     )
+                    shape_saved = True
 
-                if hand_side not in sample.hand_poses:
-                    continue
-                hand_pose = sample.hand_poses[hand_side]
+                hand_pose = sample.hand_pose
+                mano_pose = hand_pose.mano
 
                 pose_samples.append(
                     MANOPoseSample(
                         sequence_name=sequence_name,
                         frame_id=sample.frame_id,
-                        mano_theta=hand_pose.mano.mano_theta,
-                        wrist_xform=hand_pose.mano.wrist_xform,
-                        hand_side=hand_side,
+                        mano_theta=(
+                            np.zeros(15, dtype=np.float32)
+                            if mano_pose is None
+                            else mano_pose.mano_theta
+                        ),
+                        wrist_xform=(
+                            np.zeros(6, dtype=np.float32)
+                            if mano_pose is None
+                            else mano_pose.wrist_xform
+                        ),
+                        hand_side=hand_pose.hand_side,
                     )
                 )
 
