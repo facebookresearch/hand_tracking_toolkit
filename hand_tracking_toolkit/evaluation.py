@@ -46,9 +46,11 @@ def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     else:
         raise RuntimeError("Incorrect tar file format")
 
+    print(f"Untaring {tar_file}")
     tf = tarfile.open(tar_file, mode)
     tf.extractall(extract_dir)
     tf.close()
+    print(f"Finished untaring {tar_file}")
 
 
 def group_by_sequence_names(all_entries):
@@ -185,8 +187,10 @@ def evaluate_pose_dataset(
     pose_pred = load_pred_pose_file(pred_dir, dataset_suffix)
     if pose_pred is None:
         return None
+    print(f"Done loading pred file from {pred_dir}")
 
     landmarks_gt, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    print(f"Done loading gt file from {gt_dir}")
 
     pose_metrics = compute_overall_pose_metrics(
         sequence_name_to_pose_pred=pose_pred,
@@ -203,8 +207,10 @@ def evaluate_shape_dataset(
     shape_pred = load_pred_shape_file(pred_dir, dataset_suffix)
     if shape_pred is None:
         return None
+    print(f"Done loading pred file from {pred_dir}")
 
     _, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    print(f"Done loading gt file from {gt_dir}")
 
     shape_metrics = compute_overall_shape_metrics(
         sequence_name_to_shape_gt=shape_gt,
@@ -249,7 +255,7 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
             'submitted_at': u'2017-03-20T19:22:03.880652Z'
         }
     """
-    print(f"Evaluating {phase_codename}")
+    print(f"Evaluating {phase_codename} branch:linguang")
     output = []
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
@@ -257,6 +263,7 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
         extract_tar(Path(test_annotation_file), gt_dir)
         extract_tar(Path(user_submission_file), pred_dir)
         mano_model = MANOHandModel(str(gt_dir.joinpath("mano")))
+        print("Down building mano model")
 
         if phase_codename == "pose_estimation":
             for dataset_suffix in ["umetrack", "hot3d"]:
