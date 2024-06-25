@@ -36,7 +36,7 @@ def parse_args():
 def main() -> None:
     args = parse_args()
     output = evaluate(
-        args.test_annotation_file, args.user_submission_file, args.phase_codename
+        args.test_annotation_file, args.user_submission_file, args.phase_codename, mode=None
     )
     print(output)
 

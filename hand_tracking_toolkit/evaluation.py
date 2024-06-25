@@ -35,18 +35,18 @@ from .hand_models.mano_hand_model import MANOHandModel
 from .metrics import compute_pose_metrics, compute_shape_metrics
 
 
-def extract_tar(tar_file: Path, extract_dir: Path) -> None:
+def extract_tar(tar_file: Path, extract_dir: Path, mode: Optional[str] = None) -> None:
     assert tar_file.exists()
 
-    # if tar_file.suffix == ".tar":
-    #     mode = "r"
-    # elif tar_file.suffix == ".gz":
-    #     mode = "r:gz"
-    # elif tar_file.suffix == ".tgz":
-    #     mode = "r:gz"
-    # else:
-    #     raise RuntimeError("Incorrect tar file format")
-    mode = "r"
+    if mode is None:
+        if tar_file.suffix == ".tar":
+            mode = "r"
+        elif tar_file.suffix == ".gz":
+            mode = "r:gz"
+        elif tar_file.suffix == ".tgz":
+            mode = "r:gz"
+        else:
+            raise RuntimeError("Incorrect tar file format")
 
     print(f"Untaring {tar_file}: {os.path.getsize(tar_file)}")
     with tarfile.open(tar_file, mode) as tf:
@@ -222,7 +222,7 @@ def evaluate_shape_dataset(
     return shape_metrics
 
 
-def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwargs):
+def evaluate_impl(test_annotation_file, user_submission_file, phase_codename, mode):
     print("Starting Evaluation.....")
     """
     Evaluates the submission for a particular challenge phase and returns score
@@ -262,8 +262,8 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
         pred_dir = Path(tmp_dir, "pred")
-        extract_tar(Path(user_submission_file), pred_dir)
-        extract_tar(Path(test_annotation_file), gt_dir)
+        extract_tar(Path(user_submission_file), pred_dir, mode)
+        extract_tar(Path(test_annotation_file), gt_dir, mode)
         mano_model = MANOHandModel(str(gt_dir.joinpath("mano")))
         print("Down building mano model")
 
@@ -286,3 +286,8 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
         print(f"Completed evaluation for {phase_codename}")
 
     return {"result": output}
+
+def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwargs):
+    # evalAI automatically decompresses gzip files. Do not decompress again.
+    # Treat the file as an uncompressed tar file.
+    evaluate_impl(test_annotation_file, user_submission_file, phase_codename, mode="r")
