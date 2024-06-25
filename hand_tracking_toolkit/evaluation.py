@@ -39,7 +39,7 @@ def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     assert tar_file.exists()
     print(f"Untaring {tar_file}: {os.path.getsize(tar_file)}")
     with tarfile.open(tar_file, "r") as tf:
-        print(f"Opened tar file")
+        print("Opened tar file")
         tf.extractall(extract_dir)
     print(f"Finished untaring {tar_file}")
 
