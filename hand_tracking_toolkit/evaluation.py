@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
+import os
 
 from .hand_models.mano_hand_model import MANOHandModel
 
@@ -46,7 +47,7 @@ def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     else:
         raise RuntimeError("Incorrect tar file format")
 
-    print(f"Untaring {tar_file}")
+    print(f"Untaring {tar_file}: {os.path.getsize(tar_file)}")
     with tarfile.open(tar_file, mode) as tf:
         print(f"Opened tar file")
         tf.extractall(extract_dir)
