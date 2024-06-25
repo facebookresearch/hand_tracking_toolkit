@@ -211,7 +211,7 @@ def evaluate_shape_dataset(
     return shape_metrics
 
 
-def evaluate(test_annotation_file, user_submission_file, phase_codename):
+def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwargs):
     print("Starting Evaluation.....")
     """
     Evaluates the submission for a particular challenge phase and returns score
@@ -246,7 +246,7 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename):
             'submitted_at': u'2017-03-20T19:22:03.880652Z'
         }
     """
-    print(f"Evaluating {phase_codename} branch:linguang")
+    print(f"Evaluating {phase_codename}")
     output = []
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
