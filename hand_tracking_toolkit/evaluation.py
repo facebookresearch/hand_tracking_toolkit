@@ -260,8 +260,8 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
         pred_dir = Path(tmp_dir, "pred")
-        extract_tar(Path(test_annotation_file), gt_dir)
         extract_tar(Path(user_submission_file), pred_dir)
+        extract_tar(Path(test_annotation_file), gt_dir)
         mano_model = MANOHandModel(str(gt_dir.joinpath("mano")))
         print("Down building mano model")
 
