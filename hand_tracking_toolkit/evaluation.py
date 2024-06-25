@@ -47,9 +47,9 @@ def extract_tar(tar_file: Path, extract_dir: Path) -> None:
         raise RuntimeError("Incorrect tar file format")
 
     print(f"Untaring {tar_file}")
-    tf = tarfile.open(tar_file, mode)
-    tf.extractall(extract_dir)
-    tf.close()
+    with tarfile.open(tar_file, mode) as tf:
+        print(f"Opened tar file")
+        tf.extractall(extract_dir)
     print(f"Finished untaring {tar_file}")
 
 
