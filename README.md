@@ -1,5 +1,7 @@
 # A toolkit for egocentric hand tracking research
 
+### Check out the [Multiview Egocentric Hand Tracking Challenge 2024](https://eval.ai/web/challenges/challenge-page/2333/overview)!!
+
 This repository contains the following tools for hand tracking research:
 
 - APIs for loading data from the UmeTrack and HOT3D datasets
@@ -82,7 +84,8 @@ Each dataset has three splits:
 
 ### Downloading the datasets
 
-**Coming soon!!**
+1. [UmeTrack download link](https://huggingface.co/datasets/facebook/hand_tracking_challenge_umetrack/tree/main)
+2. HOT3D: **Coming soon!!**
 
 ### Installing the toolkit
 
@@ -133,20 +136,25 @@ for i, sample in enumerate(dataset):
         sample,
         mano_layer,
         visualize_mesh=True,
-        visualize_keypoints=False
+        visualize_keypoints=True,
+        pose_type="umetrack"
     )
     # use your favorite library to visualize the image
 ```
 
+The visualization of hand crops should look like this:
+
+<img src="assets/hand_crop_vis.png" alt="drawing" width="600"/>
+
 ## Evaluation
 
 Evaluation is performed using the
-[Multiview Egocentric Hand Tracking Challenge]() website. Following the data
-splits, the challenge has two tracks: 1) pose estimation track and 2) shape
-estimation track. For each track, a submission tar file is expected.
-`submissions.py` provides utility functions to generate the submission files.
-The evaluation server stores the test annotation files which are compared with
-the submission files to calculate the metrics.
+[Multiview Egocentric Hand Tracking Challenge](https://eval.ai/web/challenges/challenge-page/2333/overview)
+website. Following the data splits, the challenge has two tracks: 1) pose
+estimation track and 2) shape estimation track. For each track, a submission tar
+file is expected. `submissions.py` provides utility functions to generate the
+submission files. The evaluation server stores the test annotation files which
+are compared with the submission files to calculate the metrics.
 
 ### Submission formats
 
@@ -168,6 +176,7 @@ The submission file for the **pose estimation track** looks like this:
         "wrist_xform": [...],
         "hand_side": 1
     },
+    ...
 ]
 ```
 
@@ -180,11 +189,7 @@ The submission file for the **shape estimation track** looks like this:
         "mano_beta": [...], // mano shape parameters
         "hand_side": 0 // left
     },
-    {
-        "sequence_name": "sequence0001",
-        "mano_beta": [...], // mano shape parameters
-        "hand_side": 1
-    },
+    ...
 ]
 ```
 
@@ -197,7 +202,7 @@ evaluate on.
 Example for the pose estimation track:
 
 ```
-├─ pose_submission.tar
+├─ pose_submission.tar.gz
 │  ├─ result_pose_umetrack.json
 │  ├─ result_pose_hot3d.json
 ```
@@ -205,7 +210,7 @@ Example for the pose estimation track:
 Example for the shape estimation track:
 
 ```
-├─ shape_submission.tar
+├─ shape_submission.tar.gz
 │  ├─ result_shape_umetrack.json
 │  ├─ result_shape_hot3d.json
 ```
@@ -227,15 +232,15 @@ python3 scripts/write_annotations_files.py --input-dir /path/to/your/umetrack/su
 cd $OUTPUT_DIR
 for i in *.json; do mv "$i" "${i%.*}_umetrack.json"; done
 
-# Pack everything into a tar file
-tar -cf gt.tar gt*.json /path/to/mano/dir
+# Pack everything into a tar file (optional: compress with gzip)
+tar -czf gt.tar.gz gt*.json /path/to/mano/dir
 ```
 
 After obtaining the submission files, pack the files similarly:
 
 ```sh
-tar -cf pose_submission.tar result_pose_umetrack.json
-tar -cf shape_submission.tar result_shape_umetrack.json
+tar -czf pose_submission.tar.gz result_pose_umetrack.json
+tar -czf shape_submission.tar.gz result_shape_umetrack.json
 ```
 
 the metrics can be obtained by running the evaluation script (the same script
@@ -243,19 +248,14 @@ that runs on the challenge server):
 
 ```sh
 # pose estimation evaluation
-python3 scripts/run_evaluation.par --test-annotation-file ~/eval_files/gt.tar --user-submission-file pose_submission.tar --phase-codename pose_estimation
+python3 scripts/run_evaluation.par --test-annotation-file ~/eval_files/gt.tar.gz --user-submission-file pose_submission.tar.gz --phase-codename pose_estimation
 # shape estimation evaluation
-python3 scripts/run_evaluation.par --test-annotation-file ~/eval_files/gt.tar --user-submission-file shape_submission.tar --phase-codename shape_estimation
+python3 scripts/run_evaluation.par --test-annotation-file ~/eval_files/gt.tar.gz --user-submission-file shape_submission.tar.gz --phase-codename shape_estimation
 ```
-
-## How to contribute
-
-We welcome contributions! Go to [CONTRIBUTING](CONTRIBUTING.md) and our
-[CODE OF CONDUCT](CODE_OF_CONDUCT.md) for how to get started.
 
 ## Citation
 
-If you use this dataset/toolkit for publications, please cite this work:
+If you use this toolkit for publications, please cite this work:
 
 ```
 @inproceedings{han2022umetrack,
@@ -274,3 +274,12 @@ If you use this dataset/toolkit for publications, please cite this work:
 - Using hands annotation requires installation of
   [SMPLX/MANO](https://github.com/vchoutas/smplx) third-party dependencies,
   please review and agree to their license listed on their website.
+- Before using the UmeTrack dataset, please review and agree the
+  [license](https://github.com/facebookresearch/UmeTrack_data?tab=License-1-ov-file#readme).
+- Before using the HOT3D dataset, please review and agree the
+  [license](https://www.projectaria.com/datasets/hot3d/license/).
+
+## How to contribute
+
+We welcome contributions! Go to [CONTRIBUTING](CONTRIBUTING.md) and our
+[CODE OF CONDUCT](CODE_OF_CONDUCT.md) for how to get started.
