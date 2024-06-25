@@ -38,14 +38,15 @@ from .metrics import compute_pose_metrics, compute_shape_metrics
 def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     assert tar_file.exists()
 
-    if tar_file.suffix == ".tar":
-        mode = "r"
-    elif tar_file.suffix == ".gz":
-        mode = "r:gz"
-    elif tar_file.suffix == ".tgz":
-        mode = "r:gz"
-    else:
-        raise RuntimeError("Incorrect tar file format")
+    # if tar_file.suffix == ".tar":
+    #     mode = "r"
+    # elif tar_file.suffix == ".gz":
+    #     mode = "r:gz"
+    # elif tar_file.suffix == ".tgz":
+    #     mode = "r:gz"
+    # else:
+    #     raise RuntimeError("Incorrect tar file format")
+    mode = "r"
 
     print(f"Untaring {tar_file}: {os.path.getsize(tar_file)}")
     with tarfile.open(tar_file, mode) as tf:
