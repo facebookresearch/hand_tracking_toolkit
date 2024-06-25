@@ -20,6 +20,7 @@ Code to evaluate a submission file
 
 import collections
 import json
+import os
 import tarfile
 import tempfile
 from contextlib import ExitStack
@@ -36,19 +37,11 @@ from .metrics import compute_pose_metrics, compute_shape_metrics
 
 def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     assert tar_file.exists()
-
-    if tar_file.suffix == ".tar":
-        mode = "r"
-    elif tar_file.suffix == ".gz":
-        mode = "r:gz"
-    elif tar_file.suffix == ".tgz":
-        mode = "r:gz"
-    else:
-        raise RuntimeError("Incorrect tar file format")
-
-    tf = tarfile.open(tar_file, mode)
-    tf.extractall(extract_dir)
-    tf.close()
+    print(f"Untaring {tar_file}: {os.path.getsize(tar_file)}")
+    with tarfile.open(tar_file, "r") as tf:
+        print("Opened tar file")
+        tf.extractall(extract_dir)
+    print(f"Finished untaring {tar_file}")
 
 
 def group_by_sequence_names(all_entries):
@@ -185,8 +178,10 @@ def evaluate_pose_dataset(
     pose_pred = load_pred_pose_file(pred_dir, dataset_suffix)
     if pose_pred is None:
         return None
+    print(f"Done loading pred file from {pred_dir}")
 
     landmarks_gt, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    print(f"Done loading gt file from {gt_dir}")
 
     pose_metrics = compute_overall_pose_metrics(
         sequence_name_to_pose_pred=pose_pred,
@@ -203,8 +198,10 @@ def evaluate_shape_dataset(
     shape_pred = load_pred_shape_file(pred_dir, dataset_suffix)
     if shape_pred is None:
         return None
+    print(f"Done loading pred file from {pred_dir}")
 
     _, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    print(f"Done loading gt file from {gt_dir}")
 
     shape_metrics = compute_overall_shape_metrics(
         sequence_name_to_shape_gt=shape_gt,
@@ -254,9 +251,10 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
     with tempfile.TemporaryDirectory() as tmp_dir:
         gt_dir = Path(tmp_dir, "gt")
         pred_dir = Path(tmp_dir, "pred")
-        extract_tar(Path(test_annotation_file), gt_dir)
         extract_tar(Path(user_submission_file), pred_dir)
+        extract_tar(Path(test_annotation_file), gt_dir)
         mano_model = MANOHandModel(str(gt_dir.joinpath("mano")))
+        print("Done building the MANO model")
 
         if phase_codename == "pose_estimation":
             for dataset_suffix in ["umetrack", "hot3d"]:
