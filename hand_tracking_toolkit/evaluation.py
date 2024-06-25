@@ -254,7 +254,7 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
         extract_tar(Path(user_submission_file), pred_dir)
         extract_tar(Path(test_annotation_file), gt_dir)
         mano_model = MANOHandModel(str(gt_dir.joinpath("mano")))
-        print("Down building mano model")
+        print("Done building the MANO model")
 
         if phase_codename == "pose_estimation":
             for dataset_suffix in ["umetrack", "hot3d"]:
