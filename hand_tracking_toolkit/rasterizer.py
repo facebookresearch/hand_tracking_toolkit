@@ -60,7 +60,6 @@ def barycentric_coords_perspective(
 
     # n x m x 1 x 3 @ n x 1 x 3 x 3 -> n x m x 1 x 3
     pts = np.concatenate(
-        # pyre-ignore
         (
             (x.reshape((n, m, 1, 1)) - cx) / fx,
             (y.reshape((n, m, 1, 1)) - cy) / fy,
