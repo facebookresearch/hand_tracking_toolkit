@@ -109,7 +109,7 @@ the MANO pickle files (`MANO_LEFT.pkl` and `MANO_RIGHT.pkl`).
 You can build a hand crop image dataset using the following code snippet:
 
 ```python
-from hand_tracking_toolkit.dataset import build_hand_crop_dataset
+from hand_tracking_toolkit.dataset import build_hand_dataset
 from hand_tracking_toolkit.visualization import visualize_hand_crop_data
 from hand_tracking_tooklit.hand_models.mano_hand_model import MANOHandModel
 

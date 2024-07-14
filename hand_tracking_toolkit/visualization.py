@@ -220,7 +220,7 @@ def visualize_keypoints_and_mesh(
 
     if visualize_mesh:
         assert verts is not None and faces is not None
-        rendering, mask = rasterize_mesh(
+        rendering, mask, _ = rasterize_mesh(
             verts,
             faces,
             camera,

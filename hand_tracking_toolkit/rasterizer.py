@@ -126,7 +126,7 @@ def rasterize_mesh(
     diffuse: Sequence[float] = (1.0, 1.0, 1.0),
     specular: Sequence[float] = (1.0, 1.0, 1.0),
     shininess: float = 20,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     H = camera.height
     W = camera.width
 
@@ -162,9 +162,10 @@ def rasterize_mesh(
     # make output buffers
     image = np.zeros((H, W, 3), dtype=np.float32)
     mask = np.zeros((H, W), dtype=np.uint8)
+    depth = np.zeros((H, W), dtype=np.float32)
 
     if faces.shape[0] == 0:
-        return image, mask
+        return image, mask, depth
 
     # Compute the box size for each triangle, take the largest one.
     # This can be suboptimal if one triangle is significantly larger than
@@ -245,10 +246,12 @@ def rasterize_mesh(
     xt = xt[order].astype(np.int32)
     yt = yt[order].astype(np.int32)
     color = color[order]
+    recip_zt = recip_zt[order]
 
     image[yt, xt] = color
     image = (image.clip(min=0, max=1.0) * 255).astype(np.uint8)
 
     mask[yt, xt] = 1
+    depth[yt, xt] = 1 / recip_zt
 
-    return image, mask
+    return image, mask, depth
