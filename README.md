@@ -180,6 +180,14 @@ The submission file for the **pose estimation track** looks like this:
 ]
 ```
 
+**IMPORTATNT NOTES**
+
+- For UmeTrack, the evaluation is done for every frame, i.e. frame_id=0,1,2,3...
+- For HOT3D, since the dataset is larger, the evaluation is done for every 10th
+  frame, i.e. frame_id=0, 10, 20, 30...
+
+**Please only include the frames to be evaluated in the submission files**.
+
 The submission file for the **shape estimation track** looks like this:
 
 ```

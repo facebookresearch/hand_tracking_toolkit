@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import argparse
+import json
 import logging
 from pathlib import Path
 
 import numpy as np
-
 from hand_tracking_toolkit.dataset import build_hand_dataset, HandSide
 from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     forward_kinematics as umetrack_forward_kinematics,
@@ -45,14 +45,29 @@ def main() -> None:
     )
     parser.add_argument("--input-dir", type=str, required=True)
     parser.add_argument("--output-dir", type=str, required=True)
+    parser.add_argument("--hot3d-split", type=str, required=False, default="")
+    parser.add_argument("--every-n-frames", type=int, required=False, default=1)
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
     output_dir = Path(args.output_dir)
 
-    sequence_names = []
-    for tar_path in input_dir.glob("*.tar"):
-        sequence_names.append(tar_path.name.split(".")[0])
+    if args.hot3d_split:
+        hot3d_release_dir = input_dir
+        with open(str(hot3d_release_dir / "clip_splits.json"), "rb") as fp:
+            j = json.load(fp)
+
+        sequence_names = []
+        for device in ["Aria", "Quest3"]:
+            for clip_id in j[args.hot3d_split][device]:
+                sequence_names.append(
+                    f"test_{device.lower()}_private/clip-{clip_id:06d}"
+                )
+    else:
+        sequence_names = []
+        for tar_path in input_dir.glob("*.tar"):
+            sequence_names.append(tar_path.name.split(".")[0])
+
     logger.info(f"Found {len(sequence_names)} sequences in input dir {input_dir}.")
 
     pose_samples = []
@@ -69,7 +84,10 @@ def main() -> None:
         )
 
         shape_saved = False
-        for hand_crops in dataset:
+        for i, hand_crops in enumerate(dataset):
+            if i % args.every_n_frames:
+                continue
+
             for sample in hand_crops:
                 if not shape_saved:
                     # For each sequence, save the shape once. The shape parameters
