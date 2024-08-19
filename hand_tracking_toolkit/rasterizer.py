@@ -56,7 +56,7 @@ def barycentric_coords_perspective(
     v_mat = v.copy()
     v_mat[..., 0] = (v_mat[..., 0] - cx) / fx * v_mat[..., 2]
     v_mat[..., 1] = (v_mat[..., 1] - cy) / fy * v_mat[..., 2]
-    inv_v_mat = np.linalg.inv(v_mat)
+    inv_v_mat = np.linalg.pinv(v_mat)
 
     # n x m x 1 x 3 @ n x 1 x 3 x 3 -> n x m x 1 x 3
     pts = np.concatenate(
