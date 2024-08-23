@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import dataclasses
+import importlib.resources
 import json
 import os.path
 import unittest
@@ -30,7 +31,6 @@ from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     UmeTrackHandModelData,
     UmeTrackHandPose,
 )
-from libfb.py import parutil
 
 from smplx.utils import MANOOutput
 
@@ -71,9 +71,10 @@ class MockMANOHandModel(MANOHandModel):
 class TestForwardKinematics(unittest.TestCase):
     def setUp(self):
         self.mano_model = MockMANOHandModel()
-        test_data_dir = parutil.get_file_path(
-            "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
-            __package__,
+        test_data_dir = str(
+            importlib.resources.files(__package__).joinpath(
+                "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
+            )
         )
         with open(
             os.path.join(test_data_dir, "sample_umetrack_hand_model_data.json"), "r"

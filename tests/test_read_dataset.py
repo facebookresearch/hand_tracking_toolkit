@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.resources
 import os.path
 import unittest
 
 from hand_tracking_toolkit.dataset import build_hand_dataset
-from libfb.py import parutil
 
 
 class TestReadDataset(unittest.TestCase):
     def setUp(self):
-        self.test_data_dir = parutil.get_file_path(
-            "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
-            __package__,
+        self.test_data_dir = str(
+            importlib.resources.files(__package__).joinpath(
+                "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
+            )
         )
         self.test_sequence_name = "small"
 
