@@ -83,6 +83,9 @@ def main() -> None:
             output_crops=True,
         )
 
+        # If sequence_name is a relative path, keep the basename
+        sequence_name = sequence_name.split("/")[-1]
+
         shape_saved = False
         for i, hand_crops in enumerate(dataset):
             if i % args.every_n_frames:
