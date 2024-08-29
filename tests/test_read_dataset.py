@@ -14,9 +14,12 @@
 
 import importlib.resources
 import os.path
+import shutil
 import unittest
 
 from hand_tracking_toolkit.dataset import build_hand_dataset
+
+TMP_FOLDER = "/tmp"
 
 
 class TestReadDataset(unittest.TestCase):
@@ -31,10 +34,11 @@ class TestReadDataset(unittest.TestCase):
         self.tar_path = os.path.join(
             self.test_data_dir, f"{self.test_sequence_name}.tar"
         )
+        shutil.copyfile(self.tar_path, f"{TMP_FOLDER}/{self.test_sequence_name}.tar")
 
     def test_full_dataset(self):
         iter_dataset = build_hand_dataset(
-            self.test_data_dir,
+            TMP_FOLDER,
             [self.test_sequence_name],
             load_monochrome=True,
             load_rgb=True,
@@ -44,7 +48,7 @@ class TestReadDataset(unittest.TestCase):
 
     def test_crop_dataset(self):
         iter_dataset = build_hand_dataset(
-            self.test_data_dir,
+            TMP_FOLDER,
             [self.test_sequence_name],
             load_monochrome=True,
             load_rgb=True,
