@@ -274,4 +274,7 @@ def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwarg
 
         print(f"Completed evaluation for {phase_codename}")
 
+    print("=================Results=================")
+    print(output)
+
     return {"result": output}
