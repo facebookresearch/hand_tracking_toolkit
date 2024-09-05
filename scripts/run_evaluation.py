@@ -14,9 +14,7 @@
 
 import argparse
 
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.evaluation import (
-    evaluate,
-)
+from hand_tracking_toolkit.evaluation import evaluate
 
 
 def parse_args():

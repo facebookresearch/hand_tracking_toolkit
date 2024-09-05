@@ -17,9 +17,7 @@ import os.path
 import shutil
 import unittest
 
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.dataset import (
-    build_hand_dataset,
-)
+from hand_tracking_toolkit.dataset import build_hand_dataset
 
 TMP_FOLDER = "/tmp"
 
