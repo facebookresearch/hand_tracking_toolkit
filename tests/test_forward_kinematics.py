@@ -20,12 +20,12 @@ import unittest
 
 import numpy as np
 import torch
-from hand_tracking_toolkit.hand_models.mano_hand_model import (
+from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.hand_models.mano_hand_model import (
     forward_kinematics as mano_forward_kinematics,
     MANOHandModel,
     MANOHandPose,
 )
-from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
+from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     forward_kinematics as umetrack_forward_kinematics,
     from_json as from_umetrack_hand_model_json,
     UmeTrackHandModelData,
