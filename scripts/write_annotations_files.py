@@ -18,14 +18,11 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.dataset import (
-    build_hand_dataset,
-    HandSide,
-)
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.hand_models.umetrack_hand_model import (
+from hand_tracking_toolkit.dataset import build_hand_dataset, HandSide
+from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     forward_kinematics as umetrack_forward_kinematics,
 )
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.submissions import (
+from hand_tracking_toolkit.submissions import (
     LandmarksSample,
     MANOPoseSample,
     MANOShapeSample,

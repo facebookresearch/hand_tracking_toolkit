@@ -19,11 +19,9 @@ from pathlib import Path
 
 import numpy as np
 
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.dataset import (
-    HandSide,
-)
+from hand_tracking_toolkit.dataset import HandSide
 
-from nimble.opensource.hand_tracking_toolkit.hand_tracking_toolkit.submissions import (
+from hand_tracking_toolkit.submissions import (
     LandmarksSample,
     MANOPoseSample,
     MANOShapeSample,
