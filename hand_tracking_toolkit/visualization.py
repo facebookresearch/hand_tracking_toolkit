@@ -154,6 +154,7 @@ def cat_images(imgs: List[np.ndarray], vertically: bool) -> np.ndarray:
     if vertically:
         start_h = 0
         for im in imgs:
+            # pyre-fixme[16]: `int` has no attribute `__setitem__`.
             canvas[start_h : start_h + im.shape[0], : im.shape[1]] = im
             start_h += im.shape[0]
     else:
@@ -162,6 +163,7 @@ def cat_images(imgs: List[np.ndarray], vertically: bool) -> np.ndarray:
             canvas[: im.shape[0], start_w : start_w + im.shape[1]] = im
             start_w += im.shape[1]
 
+    # pyre-fixme[7]: Expected `ndarray` but got `int`.
     return canvas
 
 
