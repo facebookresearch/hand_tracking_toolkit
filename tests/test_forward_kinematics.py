@@ -150,6 +150,7 @@ class TestForwardKinematics(unittest.TestCase):
             pose, umetrack_hand_model_data, requires_mesh=True
         )
 
+        self.assertTrue(landmarks.isnan().sum().item() == 0)
         self.assertEqual(len(landmarks.shape), 3)
         self.assertEqual(len(verts.shape), 3)
         self.assertEqual(len(faces.shape), 3)

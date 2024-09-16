@@ -24,7 +24,18 @@ DOF_PER_FINGER: int = 4
 
 
 def axis_angle_to_matrix(axis_angle: torch.Tensor) -> torch.Tensor:
+    leading_dims = axis_angle.shape[:-1]
+    axis_angle = axis_angle.reshape(-1, 3)
+
     theta = torch.norm(axis_angle, p=2, dim=-1)
+    out = torch.zeros((theta.shape[0], 3, 3), dtype=theta.dtype, device=theta.device)
+    for i in range(3):
+        out[:, i, i] = 1
+
+    small_angle = theta < 1e-6
+    theta = theta[~small_angle]
+    axis_angle = axis_angle[~small_angle]
+
     axis = axis_angle / theta[..., None]
 
     c = torch.cos(theta)
@@ -53,8 +64,9 @@ def axis_angle_to_matrix(axis_angle: torch.Tensor) -> torch.Tensor:
         ),
         -1,
     )
+    out[~small_angle] = o.reshape(-1, 3, 3)
 
-    return o.reshape(*axis_angle.shape[:-1], 3, 3)
+    return out.reshape(*leading_dims, 3, 3)
 
 
 def _finger_fk(
