@@ -26,6 +26,7 @@ from typing import Dict, List, Optional
 import cv2
 
 import numpy as np
+import numpy.typing as npt
 import PIL.Image
 import torch
 import webdataset as wds  # @manual
@@ -62,7 +63,7 @@ class HandShapeCollection:
 class HandData:
     url: str
     frame_id: int
-    images: Dict[str, np.ndarray]
+    images: Dict[str, npt.NDArray]
     cameras: Dict[str, CameraModel]
     hand_poses: Optional[Dict[HandSide, HandPoseCollection]] = None
     hand_shape: Optional[HandShapeCollection] = None
@@ -72,7 +73,7 @@ class HandData:
 class HandCropData:
     url: str
     frame_id: int
-    images: Dict[str, np.ndarray]
+    images: Dict[str, npt.NDArray]
     cameras: Dict[str, PinholePlaneCameraModel]
     hand_pose: Optional[HandPoseCollection] = None
     hand_shape: Optional[HandShapeCollection] = None
@@ -160,10 +161,10 @@ def decode_hand_pose(j) -> Dict[HandSide, HandPoseCollection]:
 def warp_image(
     src_camera: CameraModel,
     dst_camera: PinholePlaneCameraModel,
-    src_image: np.ndarray,
+    src_image: npt.NDArray,
     interpolation: int = cv2.INTER_LINEAR,
     depth_check: bool = True,
-) -> np.ndarray:
+) -> npt.NDArray:
     """
     Warp an image from the source camera to the destination camera.
 
@@ -255,7 +256,7 @@ class SampleDecoder:
         self.crop_size = crop_size
         self.shape_params = {}
 
-    def _get_shape_params(self, url: str) -> Dict[HandSide, np.ndarray]:
+    def _get_shape_params(self, url: str) -> Dict[HandSide, npt.NDArray]:
         if url not in self.shape_params:
             tar = tarfile.open(url)
             HAND_SHAPE_FILE = "__hand_shapes.json__"

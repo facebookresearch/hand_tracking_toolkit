@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
+import numpy.typing as npt
 
 from .dataset import HandSide
 
@@ -28,22 +29,22 @@ from .dataset import HandSide
 class LandmarksSample:
     sequence_name: str
     frame_id: int
-    landmarks: np.ndarray
+    landmarks: npt.NDArray
 
 
 @dataclasses.dataclass
 class MANOPoseSample:
     sequence_name: str
     frame_id: int
-    mano_theta: np.ndarray
-    wrist_xform: np.ndarray
+    mano_theta: npt.NDArray
+    wrist_xform: npt.NDArray
     hand_side: HandSide
 
 
 @dataclasses.dataclass
 class MANOShapeSample:
     sequence_name: str
-    mano_beta: np.ndarray
+    mano_beta: npt.NDArray
     hand_side: HandSide
 
 

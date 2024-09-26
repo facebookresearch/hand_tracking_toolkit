@@ -21,6 +21,7 @@ import abc
 from typing import NamedTuple, Sequence
 
 import numpy as np
+import numpy.typing as npt
 from typing_extensions import Protocol, runtime_checkable
 
 from . import math_utils
@@ -85,7 +86,7 @@ class DistortionModel(Protocol):
     """
 
     @abc.abstractmethod
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         """
         Evaluate this polynomial at the given points.
 
@@ -217,7 +218,7 @@ class NoDistortion(NamedTuple):
     A trivial distortion model that does not distort the incoming rays.
     """
 
-    def evaluate(self, p: np.ndarray) -> np.ndarray:
+    def evaluate(self, p: npt.NDArray) -> npt.NDArray:
         return p
 
 
@@ -237,7 +238,7 @@ class OpenCVDistortion(NamedTuple):
     p1: float
     p2: float
 
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         assert p.shape[-1] == 2
         k1, k2, k3, p1, p2 = self  # pylint: disable=unpacking-non-sequence
         x, y = p[..., 0], p[..., 1]
@@ -267,7 +268,7 @@ class OpenCVFullDistortion(NamedTuple):
     k5: float
     k6: float
 
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         assert p.shape[-1] == 2
         k1, k2, k3, p1, p2, k4, k5, k6 = self  # pylint: disable=unpacking-non-sequence
         x, y = p[..., 0], p[..., 1]
@@ -297,7 +298,7 @@ class OVR44Distortion(NamedTuple):
     p3: float
     p4: float
 
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         # note: this code looks a little different than some of the C++
         # implementations, because here we're taking `uv` that is
         # already scaled to be in radians, while the C++ code mixes the
@@ -340,7 +341,7 @@ class OVR62Distortion(NamedTuple):
     k5: float
     k6: float
 
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         k1, k2, k3, k4, p1, p2, k5, k6 = self  # pylint: disable=unpacking-non-sequence
         # radial component
         r2 = (p * p).sum(axis=-1, keepdims=True)
@@ -383,7 +384,7 @@ class OVR624Distortion(NamedTuple):
     s3: float
     s4: float
 
-    def evaluate(self: Sequence[float], p: np.ndarray) -> np.ndarray:
+    def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         k1, k2, k3, k4, k5, k6, p1, p2, s1, s2, s3, s4 = self  # pylint: disable=unpacking-non-sequence
         # radial component
         r2 = (p * p).sum(axis=-1, keepdims=True)

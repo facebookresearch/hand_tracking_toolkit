@@ -115,6 +115,7 @@ import math
 from typing import Tuple, Type
 
 import numpy as np
+import numpy.typing as npt
 
 from . import camera_distortion as dis, math_utils
 
@@ -198,7 +199,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
     f: Tuple[float, float]
     c: Tuple[float, float]
 
-    T_world_from_eye: np.ndarray
+    T_world_from_eye: npt.NDArray
 
     distortion_model: Type[dis.DistortionModel]
     distort: dis.DistortionModel

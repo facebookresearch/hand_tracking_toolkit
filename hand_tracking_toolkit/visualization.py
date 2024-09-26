@@ -17,6 +17,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 import torch
 
 from .camera import CameraModel
@@ -62,7 +63,7 @@ CONTRASTIVE_COLORS = [
 ]
 
 
-def ensure_rgb(img: np.ndarray) -> np.ndarray:
+def ensure_rgb(img: npt.NDArray) -> npt.NDArray:
     """Ensure the image is RGB (convert if necessary)"""
     assert len(img.shape) == 2 or len(img.shape) == 3
     if len(img.shape) == 2:
@@ -75,7 +76,7 @@ def ensure_rgb(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def ensure_uint8(img: np.ndarray, check_value_range: bool = False) -> np.ndarray:
+def ensure_uint8(img: npt.NDArray, check_value_range: bool = False) -> npt.NDArray:
     """Ensure the image is [0, 255] ranged (cast if necessary)"""
     if img.dtype == np.uint8:
         return img
@@ -88,7 +89,7 @@ def ensure_uint8(img: np.ndarray, check_value_range: bool = False) -> np.ndarray
     return (img * 255).astype(np.uint8)
 
 
-def find_in_frame(pts: np.ndarray, im_w: int, im_h: int) -> np.ndarray:
+def find_in_frame(pts: npt.NDArray, im_w: int, im_h: int) -> npt.NDArray:
     """Find all points within the image frame and return the binary mask"""
     return (
         (pts[..., 0] >= 0)
@@ -99,11 +100,11 @@ def find_in_frame(pts: np.ndarray, im_w: int, im_h: int) -> np.ndarray:
 
 
 def draw_keypoints(
-    image: np.ndarray,
-    pts: np.ndarray,
+    image: npt.NDArray,
+    pts: npt.NDArray,
     pts_colors: List[List[int]],
     marker_size: int = 1,
-) -> np.ndarray:
+) -> npt.NDArray:
     image = image.copy()
     image = ensure_rgb(image)
     image = ensure_uint8(image, True)
@@ -123,7 +124,7 @@ def draw_keypoints(
     return image
 
 
-def cat_images(imgs: List[np.ndarray], vertically: bool) -> np.ndarray:
+def cat_images(imgs: List[npt.NDArray], vertically: bool) -> npt.NDArray:
     """
     Concat images (with potentially inconsistent sizes)
     """
@@ -167,11 +168,11 @@ def cat_images(imgs: List[np.ndarray], vertically: bool) -> np.ndarray:
     return canvas
 
 
-def vcat_images(imgs: List[np.ndarray]) -> np.ndarray:
+def vcat_images(imgs: List[npt.NDArray]) -> npt.NDArray:
     return cat_images(imgs, vertically=True)
 
 
-def hcat_images(imgs: List[np.ndarray]) -> np.ndarray:
+def hcat_images(imgs: List[npt.NDArray]) -> npt.NDArray:
     return cat_images(imgs, vertically=False)
 
 
@@ -208,16 +209,16 @@ def get_keypoints_and_mesh(
 
 
 def visualize_keypoints_and_mesh(
-    verts: np.ndarray,
-    faces: np.ndarray,
-    keypoints: np.ndarray,
+    verts: npt.NDArray,
+    faces: npt.NDArray,
+    keypoints: npt.NDArray,
     hand_side: HandSide,
-    image: np.ndarray,
+    image: npt.NDArray,
     camera: CameraModel,
     visualize_mesh: bool,
     visualize_keypoints: bool,
     alpha: float = 0.6,
-) -> np.ndarray:
+) -> npt.NDArray:
     image = ensure_rgb(image)
 
     if visualize_mesh:
@@ -258,7 +259,7 @@ def visualize_hand_data(
     visualize_keypoints: bool,
     alpha: float = 0.6,
     pose_type: str = "mano",  # "umetrack"
-) -> np.ndarray:
+) -> npt.NDArray:
     hand_poses = data.hand_poses
     hand_shape = data.hand_shape
 
@@ -303,7 +304,7 @@ def visualize_hand_crop_data(
     visualize_keypoints: bool,
     alpha: float = 0.6,
     pose_type: str = "mano",  # "umetrack"
-) -> np.ndarray:
+) -> npt.NDArray:
     hand_pose = data.hand_pose
     hand_shape = data.hand_shape
 

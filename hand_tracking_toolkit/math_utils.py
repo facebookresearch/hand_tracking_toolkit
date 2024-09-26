@@ -15,6 +15,7 @@
 # pyre-strict
 
 import numpy as np
+import numpy.typing as npt
 from scipy.spatial.transform import Rotation
 
 
@@ -26,7 +27,7 @@ def quat_trans_to_matrix(
     tx: float,
     ty: float,
     tz: float,
-) -> np.ndarray:
+) -> npt.NDArray:
     """
     Quaternion is stored in w,x,y,z format. Some libraries like scipy assume
     x,y,z,w. Be extra careful about the difference in conventions.
@@ -38,7 +39,7 @@ def quat_trans_to_matrix(
     return T
 
 
-def as_4x4(a: np.ndarray, *, copy: bool = False) -> np.ndarray:
+def as_4x4(a: npt.NDArray, *, copy: bool = False) -> npt.NDArray:
     """
     Append [0,0,0,1] to convert 3x4 matrices to a 4x4 homogeneous matrices
 
@@ -61,7 +62,7 @@ def as_4x4(a: np.ndarray, *, copy: bool = False) -> np.ndarray:
     raise ValueError("expected 3x4 or 4x4 affine transform")
 
 
-def normalized(v: np.ndarray, axis: int = -1, eps: float = 5.43e-20) -> np.ndarray:
+def normalized(v: npt.NDArray, axis: int = -1, eps: float = 5.43e-20) -> npt.NDArray:
     """
     Return a unit-length copy of vector(s) v
 
@@ -80,7 +81,7 @@ def normalized(v: np.ndarray, axis: int = -1, eps: float = 5.43e-20) -> np.ndarr
     return v / d
 
 
-def transform_points(matrix: np.ndarray, points: np.ndarray) -> np.ndarray:
+def transform_points(matrix: npt.NDArray, points: npt.NDArray) -> npt.NDArray:
     """
     Transform an array of 3D points with an SE3 transform (rotation and translation).
 
@@ -100,7 +101,7 @@ def transform_points(matrix: np.ndarray, points: np.ndarray) -> np.ndarray:
     return rotate_points(matrix, points) + matrix[..., :3, 3]
 
 
-def rotate_points(matrix: np.ndarray, points: np.ndarray) -> np.ndarray:
+def rotate_points(matrix: npt.NDArray, points: npt.NDArray) -> npt.NDArray:
     """
     Rotates an array of 3D points with an affine transform,
     which is equivalent to transforming an array of 3D rays.

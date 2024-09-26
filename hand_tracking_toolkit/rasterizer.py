@@ -17,11 +17,12 @@
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
+import numpy.typing as npt
 
 from .camera import CameraModel
 
 
-def normalized(vecs: np.ndarray, add_const_to_denom: bool = True) -> np.ndarray:
+def normalized(vecs: npt.NDArray, add_const_to_denom: bool = True) -> npt.NDArray:
     # faster than np.linalg.norm
     denom = np.sqrt(vecs[..., 0:1] ** 2 + vecs[..., 1:2] ** 2 + vecs[..., 2:3] ** 2)
     if add_const_to_denom:
@@ -29,7 +30,7 @@ def normalized(vecs: np.ndarray, add_const_to_denom: bool = True) -> np.ndarray:
     return vecs / denom
 
 
-def get_vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarray:
+def get_vertex_normals(vertices: npt.NDArray, triangles: npt.NDArray) -> npt.NDArray:
     norm = np.zeros_like(vertices)
     tris = vertices[triangles]
     n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
@@ -42,14 +43,14 @@ def get_vertex_normals(vertices: np.ndarray, triangles: np.ndarray) -> np.ndarra
 
 
 def barycentric_coords_perspective(
-    v: np.ndarray,  # num_faces x 3 (vertices) x 3 (xyz)
-    x: np.ndarray,  # num_faces x num_pixels_per_bbox
-    y: np.ndarray,  # num_faces x num_pixels_per_bbox
+    v: npt.NDArray,  # num_faces x 3 (vertices) x 3 (xyz)
+    x: npt.NDArray,  # num_faces x num_pixels_per_bbox
+    y: npt.NDArray,  # num_faces x num_pixels_per_bbox
     fx: float,
     fy: float,
     cx: float,
     cy: float,
-) -> np.ndarray:
+) -> npt.NDArray:
     n, m = x.shape
 
     # https://www.cs.umd.edu/~zwicker/courses/computergraphics/04_Rasterization.pdf
@@ -85,15 +86,15 @@ def dot(v1, v2):
 
 
 def phong_reflection_model(
-    verts: np.ndarray,
-    normals: np.ndarray,
-    view_pos: np.ndarray,
-    light_pos: np.ndarray,
+    verts: npt.NDArray,
+    normals: npt.NDArray,
+    view_pos: npt.NDArray,
+    light_pos: npt.NDArray,
     ambient: Sequence[float],
     diffuse: Sequence[float],
     specular: Sequence[float],
     shininess: float,
-) -> np.ndarray:
+) -> npt.NDArray:
     color = np.zeros_like(verts)
     ambient_np = np.array(ambient)
     diffuse_np = np.array(diffuse)
@@ -117,16 +118,16 @@ def phong_reflection_model(
 
 
 def rasterize_mesh(
-    verts: np.ndarray,
-    faces: np.ndarray,
+    verts: npt.NDArray,
+    faces: npt.NDArray,
     camera: CameraModel,
-    vert_normals: Optional[np.ndarray] = None,
-    light_pos: Optional[np.ndarray] = None,
+    vert_normals: Optional[npt.NDArray] = None,
+    light_pos: Optional[npt.NDArray] = None,
     ambient: Sequence[float] = (0.0, 0.0, 0.0),
     diffuse: Sequence[float] = (1.0, 1.0, 1.0),
     specular: Sequence[float] = (1.0, 1.0, 1.0),
     shininess: float = 20,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     H = camera.height
     W = camera.width
 
