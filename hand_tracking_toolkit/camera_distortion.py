@@ -345,7 +345,7 @@ class OVR62Distortion(NamedTuple):
         k1, k2, k3, k4, p1, p2, k5, k6 = self  # pylint: disable=unpacking-non-sequence
         # radial component
         r2 = (p * p).sum(axis=-1, keepdims=True)
-        r2 = np.clip(r2, -np.pi**2, np.pi**2)
+        r2 = np.clip(r2, -(np.pi**2), np.pi**2)
 
         r4 = r2 * r2
         r6 = r2 * r4
@@ -388,7 +388,7 @@ class OVR624Distortion(NamedTuple):
         k1, k2, k3, k4, k5, k6, p1, p2, s1, s2, s3, s4 = self  # pylint: disable=unpacking-non-sequence
         # radial component
         r2 = (p * p).sum(axis=-1, keepdims=True)
-        r2 = np.clip(r2, -np.pi**2, np.pi**2)
+        r2 = np.clip(r2, -(np.pi**2), np.pi**2)
 
         r4 = r2 * r2
         r6 = r2 * r4

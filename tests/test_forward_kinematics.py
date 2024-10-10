@@ -47,7 +47,7 @@ class MockMANOLayer:
         transl,
         return_verts=True,
         return_full_pose=False,
-        **kwargs
+        **kwargs,
     ):
         N = betas.shape[0]
         output = MANOOutput(
