@@ -34,14 +34,16 @@ except ImportError:
 
 # Without this hack loading the .pkl files could fail when using
 # a newer version of numpy
-np.bool = np.bool_
-np.int = np.int_
-np.float64 = np.float_
-np.float = np.float_
-np.complex = np.complex_
-np.object = np.object_
-np.unicode = np.unicode_
-np.str = np.str_
+if np.__version__ < "2":
+    np.bool = np.bool_
+    np.int = np.int_
+    # `np.float_` was removed in the NumPy 2.0 release.
+    np.float64 = np.float_
+    np.float = np.float_
+    np.complex = np.complex_
+    np.object = np.object_
+    np.unicode = np.unicode_
+    np.str = np.str_
 
 RIGHT_HAND_INDEX = 1
 MANO_TO_CANONICAL_LANDMARK_MAPPING = [
