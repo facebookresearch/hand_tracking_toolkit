@@ -232,6 +232,8 @@ def visualize_keypoints_and_mesh(
         )
 
         # blending
+        # pyre-fixme[9]: alpha has type `float`; used as `ndarray[typing.Any,
+        #  dtype[typing.Any]]`.
         alpha = alpha * mask.astype(np.float32)
         image = (
             # pyre-ignore

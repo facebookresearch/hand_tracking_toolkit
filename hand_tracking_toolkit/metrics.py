@@ -61,9 +61,14 @@ LANDMARKS_TO_EVAL = [
 def _safe_div(x, y, eps: float = 1e-6, default_val: float = 0):
     if np.isscalar(x):
         assert np.isscalar(y)
+        # pyre-fixme[58]: `<` is not supported for operand types `Union[bool, bytes,
+        #  complex, float, int, memoryview, np.generic, str]` and `float`.
         if y < eps:
             return default_val
         else:
+            # pyre-fixme[58]: `/` is not supported for operand types `Union[bool,
+            #  bytes, complex, float, int, memoryview, np.generic, str]` and
+            #  `Union[bool, bytes, complex, float, int, memoryview, np.generic, str]`.
             return x / y
 
     assert x.shape == y.shape
