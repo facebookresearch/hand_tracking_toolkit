@@ -183,8 +183,9 @@ class MANOHandModel(nn.Module):
                 num_frames,
                 self.N_LANDMARKS,
                 3,
-            )
-        ).to(device)
+            ),
+            device=device,
+        )
         if torch.any(torch.logical_not(is_right_hand)):
             if left_mano_output.joints.shape[1] != self.N_LANDMARKS:
                 extra_joints = torch.index_select(
