@@ -171,8 +171,9 @@ class MANOHandModel(nn.Module):
                 num_frames,
                 self.N_VERT,
                 3,
-            )
-        ).to(device)
+            ),
+            device=device,
+        )
         if torch.any(torch.logical_not(is_right_hand)):
             out_vertices[torch.logical_not(is_right_hand)] = left_mano_output.vertices
         if torch.sum(is_right_hand) > 0:
