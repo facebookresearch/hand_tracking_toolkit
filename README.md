@@ -1,12 +1,11 @@
 # A toolkit for egocentric hand tracking research
 
-### Check out the [Multiview Egocentric Hand Tracking Challenge 2024](https://eval.ai/web/challenges/challenge-page/2333/overview)!!
+### Check out the [Multiview Egocentric Hand Tracking Challenge](https://eval.ai/web/challenges/challenge-page/2333/overview)!!
 
 This repository contains the following tools for hand tracking research:
 
 - APIs for loading data from the UmeTrack and HOT3D datasets
-- Computation of metrics used in the Hand Tracking Challenge organized at ECCV
-  2024
+- Computation of metrics used in the Hand Tracking Challenge
 - Data visualization helpers
 
 ## Datasets
