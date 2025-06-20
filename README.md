@@ -84,7 +84,7 @@ Each dataset has three splits:
 ### Downloading the datasets
 
 1. [UmeTrack download link](https://huggingface.co/datasets/facebook/hand_tracking_challenge_umetrack/tree/main)
-2. [HOT3D download link](https://huggingface.co/datasets/bop-benchmark/datasets/tree/main/hot3d)
+2. [HOT3D download link](https://huggingface.co/datasets/bop-benchmark/hot3d)
 
 ### Installing the toolkit
 
