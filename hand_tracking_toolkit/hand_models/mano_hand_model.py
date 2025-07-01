@@ -40,7 +40,7 @@ if np.__version__ < "2":
     # `np.float_` was removed in the NumPy 2.0 release.
     np.float64 = np.float_
     np.float = np.float_
-    np.complex = np.complex_
+    np.complex = np.complex128
     np.object = np.object_
     np.unicode = np.unicode_
     np.str = np.str_
