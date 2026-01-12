@@ -90,9 +90,9 @@ def skin_vertices(
     wrist_transforms: torch.Tensor,
 ) -> torch.Tensor:
     assert hand_model.mesh_vertices is not None, "mesh vertices should not be none"
-    assert (
-        hand_model.dense_bone_weights is not None
-    ), "dense bone weights should not be none"
+    assert hand_model.dense_bone_weights is not None, (
+        "dense bone weights should not be none"
+    )
     vertices = skin_points(
         hand_model.joint_rest_positions,
         hand_model.joint_rotation_axes,

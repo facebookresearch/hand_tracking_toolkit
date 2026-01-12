@@ -31,7 +31,6 @@ import numpy as np
 import torch
 
 from .hand_models.mano_hand_model import MANOHandModel
-
 from .metrics import compute_pose_metrics, compute_shape_metrics
 
 

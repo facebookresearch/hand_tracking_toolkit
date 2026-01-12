@@ -111,7 +111,6 @@ wider field of view it should be the distance to the point instead.
 
 import abc
 import math
-
 from typing import Tuple, Type
 
 import numpy as np

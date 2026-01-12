@@ -18,9 +18,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-
 from hand_tracking_toolkit.dataset import HandSide
-
 from hand_tracking_toolkit.submissions import (
     LandmarksSample,
     MANOPoseSample,

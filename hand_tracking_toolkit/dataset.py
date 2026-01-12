@@ -24,7 +24,6 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 import cv2
-
 import numpy as np
 import numpy.typing as npt
 import PIL.Image

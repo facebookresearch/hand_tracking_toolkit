@@ -31,7 +31,6 @@ from hand_tracking_toolkit.hand_models.umetrack_hand_model import (
     UmeTrackHandModelData,
     UmeTrackHandPose,
 )
-
 from smplx.utils import MANOOutput
 
 

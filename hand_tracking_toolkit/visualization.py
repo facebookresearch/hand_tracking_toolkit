@@ -35,7 +35,6 @@ from .hand_models.mano_hand_model import (
 from .hand_models.umetrack_hand_model import (
     forward_kinematics as umetrack_forward_kinematics,
 )
-
 from .rasterizer import rasterize_mesh
 
 CONTRASTIVE_COLORS = [
@@ -82,9 +81,9 @@ def ensure_uint8(img: npt.NDArray, check_value_range: bool = False) -> npt.NDArr
         return img
 
     if check_value_range:
-        assert (
-            img.max() <= 1.0 and img.min() >= 0.0
-        ), "A valid image should have values in [0, 1]"
+        assert img.max() <= 1.0 and img.min() >= 0.0, (
+            "A valid image should have values in [0, 1]"
+        )
 
     return (img * 255).astype(np.uint8)
 
@@ -134,12 +133,12 @@ def cat_images(imgs: List[npt.NDArray], vertically: bool) -> npt.NDArray:
     max_h = 0
     for im in imgs:
         im_chs = 1 if len(im.shape) == 2 else im.shape[2]
-        assert (
-            chs == im_chs
-        ), f"number of channels is not consistent! - expected {chs} but got {im_chs}!"
-        assert (
-            im.dtype == dtype
-        ), f"data type does not match - expected {dtype} but got {im.dtype}!"
+        assert chs == im_chs, (
+            f"number of channels is not consistent! - expected {chs} but got {im_chs}!"
+        )
+        assert im.dtype == dtype, (
+            f"data type does not match - expected {dtype} but got {im.dtype}!"
+        )
         if vertically:
             max_w = max(max_w, im.shape[1])
             max_h += im.shape[0]
