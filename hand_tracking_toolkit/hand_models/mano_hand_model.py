@@ -41,7 +41,7 @@ if np.__version__ < "2":
     np.float = np.float64
     np.complex = np.complex128
     np.object = np.object_
-    np.unicode = np.unicode_
+    np.unicode = np.str_
     np.str = np.str_
 
 RIGHT_HAND_INDEX = 1

@@ -36,7 +36,7 @@ from smplx.utils import MANOOutput
 
 class MockMANOLayer:
     def __init__(self):
-        self.faces = np.zeros((123, 3), dtype=np.int)
+        self.faces = np.zeros((123, 3), dtype=np.int64)
 
     def __call__(
         self,
