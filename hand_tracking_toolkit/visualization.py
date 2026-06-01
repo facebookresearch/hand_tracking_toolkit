@@ -282,7 +282,9 @@ def visualize_hand_data(
         vis = image
         for hand_side, (keypoints, verts, faces) in keypoints_and_meshes.items():
             vis = visualize_keypoints_and_mesh(
+                # pyrefly: ignore [missing-attribute]
                 verts=verts.numpy(),
+                # pyrefly: ignore [missing-attribute]
                 faces=faces.numpy(),
                 keypoints=keypoints.numpy(),
                 hand_side=hand_side,

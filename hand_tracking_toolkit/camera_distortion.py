@@ -86,6 +86,7 @@ class DistortionModel(Protocol):
     """
 
     @abc.abstractmethod
+    # pyrefly: ignore [invalid-annotation]
     def evaluate(self: Sequence[float], p: npt.NDArray) -> npt.NDArray:
         """
         Evaluate this polynomial at the given points.
@@ -183,6 +184,7 @@ class ArctanProjection(CameraProjection):
         return np.stack((x * s, y * s), axis=-1)
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def unproject(uv):
         assert uv.shape[-1] == 2
         u, v = np.moveaxis(uv, -1, 0)
@@ -204,6 +206,7 @@ class ArctanProjection(CameraProjection):
         return np.stack([xy[..., 0] * s, xy[..., 1] * s, r3 * np.sign(z)], axis=-1)
 
     @staticmethod
+    # pyrefly: ignore [bad-override-param-name]
     def unproject3(uvd):
         assert uvd.shape[-1] == 3
         u, v, d = np.moveaxis(uvd, -1, 0)

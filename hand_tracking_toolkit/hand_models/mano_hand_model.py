@@ -34,14 +34,21 @@ except ImportError:
 # Without this hack loading the .pkl files could fail when using
 # a newer version of numpy
 if np.__version__ < "2":
+    # pyrefly: ignore [missing-attribute]
     np.bool = np.bool_
+    # pyrefly: ignore [missing-attribute]
     np.int = np.int_
     # `np.float_` was removed in the NumPy 2.0 release.
     np.float64 = np.float64
+    # pyrefly: ignore [missing-attribute]
     np.float = np.float64
+    # pyrefly: ignore [missing-attribute]
     np.complex = np.complex128
+    # pyrefly: ignore [missing-attribute]
     np.object = np.object_
+    # pyrefly: ignore [missing-attribute]
     np.unicode = np.str_
+    # pyrefly: ignore [missing-attribute]
     np.str = np.str_
 
 RIGHT_HAND_INDEX = 1
@@ -118,12 +125,15 @@ class MANOHandModel(nn.Module):
         if (
             torch.sum(
                 torch.abs(
+                    # pyrefly: ignore [bad-index]
                     self.mano_layer_left.shapedirs[:, 0, :]
+                    # pyrefly: ignore [bad-index]
                     - self.mano_layer_right.shapedirs[:, 0, :]
                 )
             )
             < 1
         ):
+            # pyrefly: ignore [bad-index, unsupported-operation]
             self.mano_layer_left.shapedirs[:, 0, :] *= -1
 
     def forward(
@@ -174,8 +184,10 @@ class MANOHandModel(nn.Module):
             device=device,
         )
         if torch.any(torch.logical_not(is_right_hand)):
+            # pyrefly: ignore [unbound-name]
             out_vertices[torch.logical_not(is_right_hand)] = left_mano_output.vertices
         if torch.sum(is_right_hand) > 0:
+            # pyrefly: ignore [unbound-name]
             out_vertices[is_right_hand] = right_mano_output.vertices
 
         out_landmarks = torch.zeros(
