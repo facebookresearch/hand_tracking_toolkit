@@ -154,7 +154,6 @@ def cat_images(imgs: List[npt.NDArray], vertically: bool) -> npt.NDArray:
     if vertically:
         start_h = 0
         for im in imgs:
-            # pyre-fixme[16]: `int` has no attribute `__setitem__`.
             canvas[start_h : start_h + im.shape[0], : im.shape[1]] = im
             start_h += im.shape[0]
     else:
@@ -231,11 +230,9 @@ def visualize_keypoints_and_mesh(
         )
 
         # blending
-        # pyre-fixme[9]: alpha has type `float`; used as `ndarray[typing.Any,
         #  dtype[typing.Any]]`.
         alpha = alpha * mask.astype(np.float32)
         image = (
-            # pyre-ignore
             image.astype(np.float32) * (1 - alpha[..., None])
             + rendering.astype(np.float32) * alpha[..., None]
         ).astype(np.uint8)
