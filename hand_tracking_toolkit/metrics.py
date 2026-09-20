@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
-
 """
 Helper methods for metric computation
 """
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
@@ -58,7 +56,7 @@ LANDMARKS_TO_EVAL = [
 ]
 
 
-def _safe_div(x, y, eps: float = 1e-6, default_val: float = 0):
+def _safe_div(x: Any, y: Any, eps: float = 1e-6, default_val: float = 0) -> Any:
     if np.isscalar(x):
         assert np.isscalar(y)
         #  complex, float, int, memoryview, np.generic, str]` and `float`.
