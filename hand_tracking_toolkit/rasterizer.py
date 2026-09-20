@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
-
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -79,7 +77,7 @@ def barycentric_coords_perspective(
     return bary
 
 
-def dot(v1, v2):
+def dot(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
     # faster than (v1 * v2).sum(axis=-1)
     prod = v1 * v2
     return prod[..., 0] + prod[..., 1] + prod[..., 2]
