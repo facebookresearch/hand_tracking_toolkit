@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
 """
 Various implementations of Distortion and CameraProjection types.
 """
@@ -34,7 +33,7 @@ class CameraProjection(Protocol):
 
     @classmethod
     @abc.abstractmethod
-    def project(cls, v):
+    def project(cls, v: npt.NDArray) -> npt.NDArray:
         """
         Project a 3d vector in eye space down to 2d.
         """
@@ -42,7 +41,7 @@ class CameraProjection(Protocol):
 
     @classmethod
     @abc.abstractmethod
-    def unproject(cls, p):
+    def unproject(cls, p: npt.NDArray) -> npt.NDArray:
         """
         Unproject a 2d point to a unit-length vector in eye space.
 
@@ -53,7 +52,7 @@ class CameraProjection(Protocol):
 
     @staticmethod
     @abc.abstractmethod
-    def project3(v):
+    def project3(v: npt.NDArray) -> npt.NDArray:
         """
         Same as project(), but return a 3d vector.
 
@@ -64,7 +63,7 @@ class CameraProjection(Protocol):
 
     @staticmethod
     @abc.abstractmethod
-    def unproject3(p):
+    def unproject3(p: npt.NDArray) -> npt.NDArray:
         """
         Inverse of project3()
 
@@ -125,13 +124,13 @@ class PerspectiveProjection(CameraProjection):
     """
 
     @staticmethod
-    def project(v):
+    def project(v: npt.NDArray) -> npt.NDArray:
         # map to [x/z, y/z]
         assert v.shape[-1] == 3
         return v[..., :2] / v[..., 2, None]
 
     @staticmethod
-    def unproject(p):
+    def unproject(p: npt.NDArray) -> npt.NDArray:
         # map to [u,v,1] and renormalize
         assert p.shape[-1] == 2
         x, y = np.moveaxis(p, -1, 0)
@@ -140,13 +139,13 @@ class PerspectiveProjection(CameraProjection):
         return v
 
     @staticmethod
-    def project3(v):
+    def project3(v: npt.NDArray) -> npt.NDArray:
         # map to [x/z, y/z, z]
         x, y, z = np.moveaxis(v, -1, 0)
         return np.stack([x / z, y / z, z], axis=-1)
 
     @staticmethod
-    def unproject3(p):
+    def unproject3(p: npt.NDArray) -> npt.NDArray:
         # map to [p*z, v*z, z]
         x, y, z = np.moveaxis(p, -1, 0)
         return np.stack((x * z, y * z, z), axis=-1)
@@ -176,7 +175,7 @@ class ArctanProjection(CameraProjection):
     #  inconsistently.
     # pyre-fixme[40]: Static method `project` cannot override a non-static method
     #  defined in `CameraProjection`.
-    def project(p, eps: float = 2.0**-128):
+    def project(p: npt.NDArray, eps: float = 2.0**-128) -> npt.NDArray:
         assert p.shape[-1] == 3
         x, y, z = np.moveaxis(p, -1, 0)
         r = np.sqrt(x * x + y * y)
@@ -185,7 +184,7 @@ class ArctanProjection(CameraProjection):
 
     @staticmethod
     # pyrefly: ignore [bad-override]
-    def unproject(uv):
+    def unproject(uv: npt.NDArray) -> npt.NDArray:
         assert uv.shape[-1] == 2
         u, v = np.moveaxis(uv, -1, 0)
         r = np.sqrt(u * u + v * v)
@@ -196,7 +195,7 @@ class ArctanProjection(CameraProjection):
     @staticmethod
     # pyre-fixme[14]: `project3` overrides method defined in `CameraProjection`
     #  inconsistently.
-    def project3(p, eps: float = 2.0**-128):
+    def project3(p: npt.NDArray, eps: float = 2.0**-128) -> npt.NDArray:
         assert p.shape[-1] == 3
         xy = p[..., :2]
         z = p[..., 2]
@@ -207,7 +206,7 @@ class ArctanProjection(CameraProjection):
 
     @staticmethod
     # pyrefly: ignore [bad-override-param-name]
-    def unproject3(uvd):
+    def unproject3(uvd: npt.NDArray) -> npt.NDArray:
         assert uvd.shape[-1] == 3
         u, v, d = np.moveaxis(uvd, -1, 0)
         r = np.sqrt(u * u + v * v)
