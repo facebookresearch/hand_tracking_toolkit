@@ -25,12 +25,17 @@ import tarfile
 import tempfile
 from contextlib import ExitStack
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
 
 from .hand_models.mano_hand_model import MANOHandModel
 from .metrics import compute_pose_metrics, compute_shape_metrics
+
+
+CollatedData = dict[str, dict[str, torch.Tensor]]
+Metrics = dict[str, float]
 
 
 def extract_tar(tar_file: Path, extract_dir: Path) -> None:
@@ -42,7 +47,9 @@ def extract_tar(tar_file: Path, extract_dir: Path) -> None:
     print(f"Finished untaring {tar_file}")
 
 
-def group_by_sequence_names(all_entries):
+def group_by_sequence_names(
+    all_entries: list[dict[str, Any]] | None,
+) -> CollatedData | None:
     if all_entries is None:
         return
     sequence_name_to_entries = collections.defaultdict(list)
@@ -67,7 +74,9 @@ def group_by_sequence_names(all_entries):
     return sequence_name_to_collated_data
 
 
-def load_gt_files(gt_dir: Path, dataset_suffix: str):
+def load_gt_files(
+    gt_dir: Path, dataset_suffix: str
+) -> tuple[CollatedData | None, CollatedData | None]:
     landmarks_file = gt_dir.joinpath(f"gt_landmarks_{dataset_suffix}.json")
     shape_file = gt_dir.joinpath(f"gt_shape_{dataset_suffix}.json")
 
@@ -79,7 +88,9 @@ def load_gt_files(gt_dir: Path, dataset_suffix: str):
     return group_by_sequence_names(landmarks_gt), group_by_sequence_names(shape_gt)
 
 
-def load_pred_pose_file(pred_pose_dir: Path, dataset_suffix: str):
+def load_pred_pose_file(
+    pred_pose_dir: Path, dataset_suffix: str
+) -> CollatedData | None:
     pred_pose_file = Path(pred_pose_dir, f"result_pose_{dataset_suffix}.json")
     if not pred_pose_file.exists():
         return None
@@ -88,7 +99,9 @@ def load_pred_pose_file(pred_pose_dir: Path, dataset_suffix: str):
     return group_by_sequence_names(pose_data)
 
 
-def load_pred_shape_file(pred_shape_dir: Path, dataset_suffix: str):
+def load_pred_shape_file(
+    pred_shape_dir: Path, dataset_suffix: str
+) -> CollatedData | None:
     pred_shape_file = Path(pred_shape_dir, f"result_shape_{dataset_suffix}.json")
     if not pred_shape_file.exists():
         return None
@@ -97,7 +110,9 @@ def load_pred_shape_file(pred_shape_dir: Path, dataset_suffix: str):
     return group_by_sequence_names(shape_data)
 
 
-def compute_aggregate_metrics(all_metrics, all_num_frames):
+def compute_aggregate_metrics(
+    all_metrics: list[Metrics], all_num_frames: list[int]
+) -> Metrics:
     """
     Compute aggregate metrics over all sequences by taking weighted average
     of per sequence metrics.
@@ -114,11 +129,11 @@ def compute_aggregate_metrics(all_metrics, all_num_frames):
 
 def compute_overall_pose_metrics(
     *,
-    sequence_name_to_pose_pred,
-    sequence_name_to_landmarks_gt,
-    sequence_name_to_shape_gt,
-    mano_model,
-):
+    sequence_name_to_pose_pred: CollatedData,
+    sequence_name_to_landmarks_gt: CollatedData,
+    sequence_name_to_shape_gt: CollatedData,
+    mano_model: MANOHandModel,
+) -> Metrics:
     all_num_frames = []
     all_pose_metrics = []
     for seq in sequence_name_to_landmarks_gt:
@@ -147,8 +162,11 @@ def compute_overall_pose_metrics(
 
 
 def compute_overall_shape_metrics(
-    *, sequence_name_to_shape_gt, sequence_name_to_shape_pred, mano_model
-):
+    *,
+    sequence_name_to_shape_gt: CollatedData,
+    sequence_name_to_shape_pred: CollatedData,
+    mano_model: MANOHandModel,
+) -> Metrics:
     all_shape_metrics = []
     for seq in sequence_name_to_shape_gt:
         print(f"Processing sequence {seq}")
@@ -171,14 +189,19 @@ def compute_overall_shape_metrics(
 
 
 def evaluate_pose_dataset(
-    pred_dir: Path, gt_dir: Path, mano_model, dataset_suffix: str
-):
+    pred_dir: Path,
+    gt_dir: Path,
+    mano_model: MANOHandModel,
+    dataset_suffix: str,
+) -> Metrics | None:
     pose_pred = load_pred_pose_file(pred_dir, dataset_suffix)
     if pose_pred is None:
         return None
     print(f"Done loading pred file from {pred_dir}")
 
     landmarks_gt, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    if landmarks_gt is None or shape_gt is None:
+        return None
     print(f"Done loading gt file from {gt_dir}")
 
     pose_metrics = compute_overall_pose_metrics(
@@ -191,14 +214,19 @@ def evaluate_pose_dataset(
 
 
 def evaluate_shape_dataset(
-    pred_dir: Path, gt_dir: Path, mano_model, dataset_suffix: str
-):
+    pred_dir: Path,
+    gt_dir: Path,
+    mano_model: MANOHandModel,
+    dataset_suffix: str,
+) -> Metrics | None:
     shape_pred = load_pred_shape_file(pred_dir, dataset_suffix)
     if shape_pred is None:
         return None
     print(f"Done loading pred file from {pred_dir}")
 
     _, shape_gt = load_gt_files(gt_dir, dataset_suffix)
+    if shape_gt is None:
+        return None
     print(f"Done loading gt file from {gt_dir}")
 
     shape_metrics = compute_overall_shape_metrics(
@@ -209,7 +237,12 @@ def evaluate_shape_dataset(
     return shape_metrics
 
 
-def evaluate(test_annotation_file, user_submission_file, phase_codename, **kwargs):
+def evaluate(
+    test_annotation_file: str,
+    user_submission_file: str,
+    phase_codename: str,
+    **kwargs: Any,
+) -> dict[str, list[dict[str, Metrics]]]:
     print("Starting Evaluation.....")
     """
     Evaluates the submission for a particular challenge phase and returns score
