@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
-
 import dataclasses
 import os
 from typing import Tuple
@@ -97,7 +95,7 @@ class MANOHandModel(nn.Module):
     num_shape_params = 10
     dtype = torch.float32
 
-    def __init__(self, mano_model_files_dir: str = ""):
+    def __init__(self, mano_model_files_dir: str = "") -> None:
         super().__init__()
         if not mano_model_files_dir:
             return
