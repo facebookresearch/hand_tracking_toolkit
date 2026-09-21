@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
+from __future__ import annotations
 
 import dataclasses
 import io
@@ -21,7 +21,7 @@ import os.path
 import tarfile
 from collections import defaultdict
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
@@ -78,17 +78,17 @@ class HandCropData:
     hand_shape: Optional[HandShapeCollection] = None
 
 
-def decode_cam_params(j) -> Dict[str, CameraModel]:
-    cameras: Dict[str, CameraModel] = {}
+def decode_cam_params(j: dict[str, Any]) -> dict[str, CameraModel]:
+    cameras: dict[str, CameraModel] = {}
     for stream_id, cam_params in j.items():
         cameras[stream_id] = from_camera_json(cam_params)
     return cameras
 
 
 def decode_hand_crop_params(
-    j, crop_size: int
-) -> Dict[HandSide, Dict[str, PinholePlaneCameraModel]]:
-    crop_cameras: Dict[HandSide, Dict[str, PinholePlaneCameraModel]] = defaultdict(dict)
+    j: dict[str, Any], crop_size: int
+) -> dict[HandSide, dict[str, PinholePlaneCameraModel]]:
+    crop_cameras: dict[HandSide, dict[str, PinholePlaneCameraModel]] = defaultdict(dict)
 
     for k, hand_side in zip(("left", "right"), (HandSide.LEFT, HandSide.RIGHT)):
         if k not in j or j[k] is None:
@@ -116,8 +116,8 @@ def decode_hand_crop_params(
     return crop_cameras
 
 
-def decode_hand_pose(j) -> Dict[HandSide, HandPoseCollection]:
-    hand_poses: Dict[HandSide, HandPoseCollection] = {}
+def decode_hand_pose(j: dict[str, Any]) -> dict[HandSide, HandPoseCollection]:
+    hand_poses: dict[HandSide, HandPoseCollection] = {}
 
     for hand_side in (HandSide.LEFT, HandSide.RIGHT):
         k = hand_side.value
@@ -248,14 +248,14 @@ class SampleDecoder:
         load_rgb: bool,
         output_crops: bool,
         crop_size: int,
-    ):
+    ) -> None:
         self.load_monochrome = load_monochrome
         self.load_rgb = load_rgb
         self.output_crops = output_crops
         self.crop_size = crop_size
-        self.shape_params = {}
+        self.shape_params: dict[str, HandShapeCollection | None] = {}
 
-    def _get_shape_params(self, url: str) -> Dict[HandSide, npt.NDArray]:
+    def _get_shape_params(self, url: str) -> HandShapeCollection | None:
         if url not in self.shape_params:
             tar = tarfile.open(url)
             HAND_SHAPE_FILE = "__hand_shapes.json__"
@@ -274,7 +274,7 @@ class SampleDecoder:
 
         return self.shape_params[url]
 
-    def __call__(self, sample):
+    def __call__(self, sample: dict[str, Any]) -> HandData | list[HandCropData]:
         url = sample["__url__"]
         frame_id = int(sample["__key__"])
 
@@ -317,12 +317,12 @@ class SampleDecoder:
 
 def build_hand_dataset(
     root: str,
-    sequence_names: List[str],
+    sequence_names: list[str],
     load_monochrome: bool = True,
     load_rgb: bool = False,
     output_crops: bool = False,
     crop_size: int = 128,
-):
+) -> wds.WebDataset:
     """Function to build a hand dataset
 
     Args:
