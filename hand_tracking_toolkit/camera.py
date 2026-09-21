@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pyre-unsafe
 """
 Camera Distortion Models
 
@@ -109,14 +108,25 @@ third component can simply be the raw Z coordinate, unchanged; for
 wider field of view it should be the distance to the point instead.
 """
 
+from __future__ import annotations
+
 import abc
 import math
-from typing import Tuple, Type
+from collections.abc import Mapping, Sequence
+from typing import Any, cast, Tuple, TYPE_CHECKING, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import Protocol
 
 from . import camera_distortion as dis, math_utils
+
+
+CameraT = TypeVar("CameraT", bound="CameraModel")
+
+
+class _StoredDistortion(Protocol):
+    def evaluate(self, p: npt.NDArray) -> npt.NDArray: ...
 
 
 # ---------------------------------------------------------------------
@@ -195,25 +205,29 @@ class CameraModel(dis.CameraProjection, abc.ABC):
     width: int
     height: int
 
-    f: Tuple[float, float]
-    c: Tuple[float, float]
+    f: tuple[float, float]
+    c: tuple[float, float]
 
     T_world_from_eye: npt.NDArray
 
-    distortion_model: Type[dis.DistortionModel]
+    distortion_model: type[dis.DistortionModel]
     distort: dis.DistortionModel
+
+    if TYPE_CHECKING:
+        # Legacy callers populate this dynamically; preserve runtime behavior.
+        _max_angle: float
 
     def __init__(
         self,
-        width,
-        height,
-        f,
-        c,
-        distort_coeffs,
-        T_world_from_eye=None,
-        serial="",
-        label="",
-    ):  # pylint: disable=super-init-not-called (see issue 4790 on pylint github)
+        width: int,
+        height: int,
+        f: float | Sequence[float] | npt.NDArray,
+        c: Sequence[float] | npt.NDArray,
+        distort_coeffs: dis.DistortionModel | Sequence[float] | npt.NDArray,
+        T_world_from_eye: npt.NDArray | None = None,
+        serial: str = "",
+        label: str = "",
+    ) -> None:  # pylint: disable=super-init-not-called (see issue 4790 on pylint github)
         self.width = width
         self.height = height
         self.serial = serial
@@ -221,8 +235,8 @@ class CameraModel(dis.CameraProjection, abc.ABC):
 
         # f can be either a scalar or (fx,fy) pair. We only fit scalars,
         # but may load (fx, fy) from a stored file.
-        self.f = tuple(np.broadcast_to(f, 2))
-        self.c = tuple(c)
+        self.f = cast(Tuple[float, float], tuple(np.broadcast_to(f, 2)))
+        self.c = cast(Tuple[float, float], tuple(c))
 
         if T_world_from_eye is None:
             self.T_world_from_eye = np.eye(4)
@@ -250,22 +264,22 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         else:
             self.distort = self.distortion_model(*distort_coeffs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"{type(self).__name__}({self.width}x{self.height}, f={self.f} c={self.c}"
         )
 
-    def is_fisheye(self):
+    def is_fisheye(self) -> bool:
         """
         Test if the camera model is fisheye, i.e., uses ArctanProjection.
         """
         return isinstance(self, dis.ArctanProjection)
 
     def copy(
-        self,
-        T_world_from_eye=None,
-        serial=None,
-    ):
+        self: CameraT,
+        T_world_from_eye: npt.NDArray | None = None,
+        serial: str | None = None,
+    ) -> CameraT:
         """Return a copy of this camera
 
         Arguments
@@ -287,26 +301,26 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             serial=serial,
         )
 
-    def max_angle(self):
+    def max_angle(self) -> float:
         return self._max_angle
 
-    def world_to_window(self, v):
+    def world_to_window(self, v: npt.NDArray) -> npt.NDArray:
         """Project world space points to 2D window coordinates"""
         return self.eye_to_window(self.world_to_eye(v))
 
-    def world_to_window3(self, v):
+    def world_to_window3(self, v: npt.NDArray) -> npt.NDArray:
         """Project world space points to 3D window coordinates (uv + depth)"""
         return self.eye_to_window3(self.world_to_eye(v))
 
-    def pos(self):
+    def pos(self) -> npt.NDArray:
         """Return world position of camera"""
         return self.T_world_from_eye[:3, 3]
 
-    def orient(self):
+    def orient(self) -> npt.NDArray:
         """Return world orientation of camera as 3x3 matrix"""
         return self.T_world_from_eye[:3, :3]
 
-    def world_to_eye(self, v):
+    def world_to_eye(self, v: npt.NDArray) -> npt.NDArray:
         """
         Apply camera inverse extrinsics to points `v` to get eye coords
         """
@@ -314,26 +328,26 @@ class CameraModel(dis.CameraProjection, abc.ABC):
             self.T_world_from_eye.T, v - self.T_world_from_eye[:3, 3]
         )
 
-    def eye_to_world(self, v):
+    def eye_to_world(self, v: npt.NDArray) -> npt.NDArray:
         """
         Apply camera extrinsics to eye points `v` to get world coords
         """
         return math_utils.transform_points(self.T_world_from_eye, v)
 
-    def eye_to_window(self, v):
+    def eye_to_window(self, v: npt.NDArray) -> npt.NDArray:
         """Project eye coordinates to 2d window coordinates"""
         p = self.project(v)
-        q = self.distort.evaluate(p)
+        q = cast(_StoredDistortion, self.distort).evaluate(p)
         return q * self.f + self.c
 
-    def eye_to_window3(self, v):
+    def eye_to_window3(self, v: npt.NDArray) -> npt.NDArray:
         """Project eye coordinates to 3d window coordinates (uv + depth)"""
         p = self.project3(v)
-        q = self.distort.evaluate(p[..., :2])
+        q = cast(_StoredDistortion, self.distort).evaluate(p[..., :2])
         p[..., :2] = q * self.f + self.c
         return p
 
-    def w_visible(self, w, *, margin=0):
+    def w_visible(self, w: npt.ArrayLike, *, margin: float = 0) -> npt.NDArray:
         """
         Return True if the 2d window coordinate `w` is inside the window
 
@@ -347,16 +361,16 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         return (x > x0) & (x < x1) & (y >= y0) & (y < y1)
 
     def crop(
-        self,
-        src_x,
-        src_y,
-        target_width,
-        target_height,
-        scale=1,
-        T_world_from_eye=None,
-        serial=None,
-        label=None,
-    ):
+        self: CameraT,
+        src_x: float,
+        src_y: float,
+        target_width: int,
+        target_height: int,
+        scale: float = 1,
+        T_world_from_eye: npt.NDArray | None = None,
+        serial: str | None = None,
+        label: str | None = None,
+    ) -> CameraT:
         """
         Return intrinsics for a crop of the sensor image.
 
@@ -428,7 +442,16 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         return cam
 
 
-def from_json(js):
+def from_json(
+    js: Mapping[str, Any],
+) -> (
+    PinholePlaneCameraModel
+    | OpenCVCameraModel
+    | OpenCVFullCameraModel
+    | OVR44CameraModel
+    | OVR62CameraModel
+    | OVR624CameraModel
+):
     calib = js["calibration"]
 
     width = calib["image_width"]
@@ -473,13 +496,13 @@ class PinholePlaneCameraModel(CameraModel, dis.PerspectiveProjection):
     distortion_model = dis.NoDistortion
     model_fov_limit = 50 * (math.pi / 180)
 
-    def uv_to_window_matrix(self):
+    def uv_to_window_matrix(self) -> npt.NDArray:
         """Return the 3x3 intrinsics matrix"""
         return np.array(
             [[self.f[0], 0, self.c[0]], [0, self.f[1], self.c[1]], [0, 0, 1]]
         )
 
-    def window_to_eye(self, w):
+    def window_to_eye(self, w: npt.ArrayLike) -> npt.NDArray:
         p = (np.asarray(w) - self.c) / self.f
         return self.unproject(p)
 
