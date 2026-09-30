@@ -204,6 +204,7 @@ def rasterize_mesh(
     recip_zt = bary[:, None] @ recip_z_tri[:, None, :, None]
     recip_zt = recip_zt.reshape(-1)
 
+    # pyrefly: ignore [unsupported-operation]
     n_tri = vert_normals[faces]
     nt = bary[:, None] @ n_tri[:, None]
     nt = normalized(nt.reshape((-1, 3)))
@@ -233,6 +234,7 @@ def rasterize_mesh(
         vt,
         nt,
         view_pos=view_pos,
+        # pyrefly: ignore [bad-argument-type]
         light_pos=light_pos,
         ambient=ambient,
         diffuse=diffuse,

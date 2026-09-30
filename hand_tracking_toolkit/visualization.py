@@ -233,8 +233,10 @@ def visualize_keypoints_and_mesh(
         #  dtype[typing.Any]]`.
         alpha = alpha * mask.astype(np.float32)
         image = (
+            # pyrefly: ignore [bad-index]
             image.astype(np.float32) * (1 - alpha[..., None])
-            + rendering.astype(np.float32) * alpha[..., None]
+            + rendering.astype(np.float32)
+            * alpha[..., None]  # pyrefly: ignore [bad-index]
         ).astype(np.uint8)
 
     if visualize_keypoints:
