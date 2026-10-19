@@ -123,15 +123,12 @@ class MANOHandModel(nn.Module):
         if (
             torch.sum(
                 torch.abs(
-                    # pyrefly: ignore [bad-index]
                     self.mano_layer_left.shapedirs[:, 0, :]
-                    # pyrefly: ignore [bad-index]
                     - self.mano_layer_right.shapedirs[:, 0, :]
                 )
             )
             < 1
         ):
-            # pyrefly: ignore [bad-index, unsupported-operation]
             self.mano_layer_left.shapedirs[:, 0, :] *= -1
 
     def forward(

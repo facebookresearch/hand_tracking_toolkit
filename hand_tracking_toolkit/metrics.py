@@ -81,7 +81,6 @@ def _PCK_curve(
         le_threh = errors <= thresh
         pck = _safe_div((le_threh * mask).sum(dim=-1), mask.sum(dim=-1))
         pcks.append(pck)
-    # pyrefly: ignore [bad-argument-type]
     return torch.stack(pcks)
 
 
