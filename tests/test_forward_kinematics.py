@@ -35,7 +35,7 @@ from smplx.utils import MANOOutput
 
 
 class MockMANOLayer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.faces = np.zeros((123, 3), dtype=np.int64)
 
     def __call__(
@@ -68,7 +68,7 @@ class MockMANOHandModel(MANOHandModel):
 
 
 class TestForwardKinematics(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.mano_model = MockMANOHandModel()
         test_data_dir = str(
             importlib.resources.files(__package__).joinpath(
@@ -81,7 +81,7 @@ class TestForwardKinematics(unittest.TestCase):
             j = json.load(fp)
         self.umetrack_hand_model_data = from_umetrack_hand_model_json(j)
 
-    def test_mano_forward_kinematics(self):
+    def test_mano_forward_kinematics(self) -> None:
         N = 3
         pose = MANOHandPose(
             hand_side=torch.zeros(N, dtype=torch.int),
@@ -107,7 +107,7 @@ class TestForwardKinematics(unittest.TestCase):
         self.assertEqual(verts.shape[0], N)
         self.assertEqual(faces.shape[0], N)
 
-    def test_mano_forward_kinematics_single_instance(self):
+    def test_mano_forward_kinematics_single_instance(self) -> None:
         pose = MANOHandPose(
             hand_side=torch.tensor(0),
             mano_theta=torch.zeros(

@@ -30,7 +30,7 @@ from hand_tracking_toolkit.submissions import (
 
 
 class WriteSubmissionFilesTest(unittest.TestCase):
-    def test_write_landmarks_file(self):
+    def test_write_landmarks_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = Path(tmp_dir, "poses.json")
             write_landmarks_file(
@@ -52,7 +52,7 @@ class WriteSubmissionFilesTest(unittest.TestCase):
             assert data["sequence_name"] == "0000"
             assert data["frame_id"] == 0
 
-    def test_write_mano_poses_file(self):
+    def test_write_mano_poses_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = Path(tmp_dir, "poses.json")
             write_mano_poses_file(
@@ -77,7 +77,7 @@ class WriteSubmissionFilesTest(unittest.TestCase):
             assert data["frame_id"] == 0
             assert data["hand_side"] == 0
 
-    def test_write_mano_shapes_file(self):
+    def test_write_mano_shapes_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = Path(tmp_dir, "shapes.json")
             write_mano_shapes_file(

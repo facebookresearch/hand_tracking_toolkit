@@ -23,7 +23,7 @@ TMP_FOLDER = "/tmp"
 
 
 class TestReadDataset(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.test_data_dir = str(
             importlib.resources.files(__package__).joinpath(
                 "oss_hand_tracking_toolkit_test_data/test_data/oss_hand_tracking_toolkit",
@@ -36,7 +36,7 @@ class TestReadDataset(unittest.TestCase):
         )
         shutil.copyfile(self.tar_path, f"{TMP_FOLDER}/{self.test_sequence_name}.tar")
 
-    def test_full_dataset(self):
+    def test_full_dataset(self) -> None:
         iter_dataset = build_hand_dataset(
             TMP_FOLDER,
             [self.test_sequence_name],
@@ -46,7 +46,7 @@ class TestReadDataset(unittest.TestCase):
         )
         self.assertGreater(len(list(iter_dataset)), 0)
 
-    def test_crop_dataset(self):
+    def test_crop_dataset(self) -> None:
         iter_dataset = build_hand_dataset(
             TMP_FOLDER,
             [self.test_sequence_name],
