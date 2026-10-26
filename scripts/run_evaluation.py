@@ -17,7 +17,7 @@ import argparse
 from hand_tracking_toolkit.evaluation import evaluate
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--test-annotation-file", type=str, required=True, help="Path to GT tar"
