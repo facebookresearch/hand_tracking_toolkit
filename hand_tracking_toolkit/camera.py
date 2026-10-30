@@ -262,6 +262,7 @@ class CameraModel(dis.CameraProjection, abc.ABC):
         if isinstance(distort_coeffs, dis.DistortionModel):
             self.distort = distort_coeffs
         else:
+            # pyrefly: ignore[bad-argument-count]
             self.distort = self.distortion_model(*distort_coeffs)
 
     def __repr__(self) -> str:
