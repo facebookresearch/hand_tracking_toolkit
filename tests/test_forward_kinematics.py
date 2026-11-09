@@ -128,7 +128,7 @@ class TestForwardKinematics(unittest.TestCase):
         self.assertEqual(len(verts.shape), 2)
         self.assertEqual(len(faces.shape), 2)
 
-    def test_umetrack_forward_kinematics(self):
+    def test_umetrack_forward_kinematics(self) -> None:
         N = 3
         pose = UmeTrackHandPose(
             hand_side=torch.zeros(N, dtype=torch.int),
@@ -148,6 +148,8 @@ class TestForwardKinematics(unittest.TestCase):
         landmarks, verts, faces = umetrack_forward_kinematics(
             pose, umetrack_hand_model_data, requires_mesh=True
         )
+        assert verts is not None
+        assert faces is not None
 
         self.assertTrue(landmarks.isnan().sum().item() == 0)
         self.assertEqual(len(landmarks.shape), 3)
@@ -158,7 +160,7 @@ class TestForwardKinematics(unittest.TestCase):
         self.assertEqual(verts.shape[0], N)
         self.assertEqual(faces.shape[0], N)
 
-    def test_umetrack_forward_kinematics_single_instance(self):
+    def test_umetrack_forward_kinematics_single_instance(self) -> None:
         pose = UmeTrackHandPose(
             hand_side=torch.tensor(0),
             joint_angles=torch.zeros((22), dtype=torch.float32),
@@ -167,6 +169,8 @@ class TestForwardKinematics(unittest.TestCase):
         landmarks, verts, faces = umetrack_forward_kinematics(
             pose, self.umetrack_hand_model_data, requires_mesh=True
         )
+        assert verts is not None
+        assert faces is not None
 
         self.assertEqual(len(landmarks.shape), 2)
         self.assertEqual(len(verts.shape), 2)
