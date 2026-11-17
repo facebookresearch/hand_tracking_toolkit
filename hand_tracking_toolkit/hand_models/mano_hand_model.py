@@ -194,6 +194,7 @@ class MANOHandModel(nn.Module):
             device=device,
         )
         if torch.any(torch.logical_not(is_right_hand)):
+            # pyrefly: ignore [unbound-name]
             if left_mano_output.joints.shape[1] != self.N_LANDMARKS:
                 extra_joints = torch.index_select(
                     left_mano_output.vertices,
@@ -208,6 +209,7 @@ class MANOHandModel(nn.Module):
                 joints = left_mano_output.joints
             out_landmarks[torch.logical_not(is_right_hand)] = joints
         if torch.sum(is_right_hand) > 0:
+            # pyrefly: ignore [unbound-name]
             if right_mano_output.joints.shape[1] != self.N_LANDMARKS:
                 extra_joints = torch.index_select(
                     right_mano_output.vertices,
